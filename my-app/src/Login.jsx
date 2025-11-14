@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { useNavigate, Link } from 'react-router-dom'; 
+import { useNavigate, Link } from 'react-router-dom';
 import dostLogo from "./components/images/dost-logo.png";
 
 const Login = () => {
@@ -10,11 +10,11 @@ const Login = () => {
         e.preventDefault();
         console.log("Admin login attempted. Redirecting to dashboard.");
 
-        navigate('/admin/dashboard'); 
+        navigate('/admin/dashboard');
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
             {/* Header */}
             <div className="bg-[#1F1F1F] text-white p-4 shadow-md">
                 <div className="flex items-center justify-between max-w-7xl mx-auto">
@@ -25,13 +25,14 @@ const Login = () => {
                     </div>
                     <nav className="flex space-x-6">
                         <a href="http://scinet.dost.gov.ph/#/opac" target="_blank" rel="noopener noreferrer" className="hover:text-blue-200 transition-colors"> Online Public Access Catalog</a>
-                        <Link to="/" className="font-bold text-blue-200">LitPath AI</Link> 
+                        <Link to="/" className="font-bold text-blue-200">LitPath AI</Link>
                         <a href="#" className="flex items-center hover:text-blue-200 transition-colors">
                         </a>
                     </nav>
                 </div>
             </div>
 
+            
             <div className="flex justify-center items-center flex-1 py-10 px-4">
                 <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-xl text-center">
                     <h2 className="text-3xl font-bold text-gray-800 mb-8">Hello, Librarian!</h2>
