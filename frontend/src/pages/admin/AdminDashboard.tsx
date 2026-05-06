@@ -39,6 +39,9 @@ const AdminDashboard = () => {
     // ---------- Tab State from URL ----------
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
 
+    // ---------- Dashboard Parent Expand/Collapse State ----------
+    const [isDashboardExpanded, setIsDashboardExpanded] = useState(true);
+
     // ---------- UI State ----------
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [showUserMenu, setShowUserMenu] = useState(false);
@@ -588,15 +591,42 @@ const AdminDashboard = () => {
     // ---------- Tab sync & data fetching ----------
     const handleTabChange = (tab) => {
         setActiveTab(tab);
-        setSearchParams({ tab });
+        
+        // Navigate to new route-based paths
+        const pathMap = {
+            'overview': '/library-admin/dashboard/usage-analytics',
+            'usage-analytics': '/library-admin/dashboard/usage-analytics',
+            'feedback': '/library-admin/dashboard/feedback-manager',
+            'ratings': '/library-admin/dashboard/material-ratings',
+            'material-ratings': '/library-admin/dashboard/material-ratings'
+        };
+        
+        const newPath = pathMap[tab] || '/library-admin/dashboard';
+        navigate(newPath, { replace: false });
+        
+        // Auto-expand Dashboard parent if clicking on its children
+        if (tab === 'overview' || tab === 'usage-analytics' || tab === 'ratings' || tab === 'material-ratings') {
+            setIsDashboardExpanded(true);
+        }
     };
 
     useEffect(() => {
-        const urlTab = searchParams.get('tab');
-        if (urlTab && ['overview', 'feedback', 'ratings'].includes(urlTab)) {
-            setActiveTab(urlTab);
+        // Detect active tab from current route path
+        const path = location.pathname;
+        
+        if (path.includes('/usage-analytics')) {
+            setActiveTab('overview');
+            setIsDashboardExpanded(true);
+        } else if (path.includes('/feedback-manager')) {
+            setActiveTab('feedback');
+        } else if (path.includes('/material-ratings')) {
+            setActiveTab('ratings');
+            setIsDashboardExpanded(true);
+        } else {
+            // Default to overview for base dashboard path
+            setActiveTab('overview');
         }
-    }, [searchParams]);
+    }, [location.pathname]);
 
     useEffect(() => {
         if (activeTab === 'overview') {
@@ -2790,17 +2820,55 @@ const AdminDashboard = () => {
                         </button>
                     </div>
                     <nav className="flex-1 py-4 px-3 space-y-2 overflow-y-auto">
-                        <button onClick={() => handleTabChange('overview')} className={`w-full flex items-center p-3 rounded-lg transition-colors ${activeTab === 'overview' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}>
-                            <LayoutDashboard size={20} className="flex-shrink-0" />
-                            <span className={`ml-3 text-sm whitespace-nowrap transition-all duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>Overview</span>
-                        </button>
-                        <button onClick={() => handleTabChange('feedback')} className={`w-full flex items-center p-3 rounded-lg transition-colors ${activeTab === 'feedback' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}>
+                        {/* Dashboard Parent Section */}
+                        <div>
+                            <button 
+                                onClick={() => setIsDashboardExpanded(!isDashboardExpanded)}
+                                className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${activeTab === 'overview' || activeTab === 'ratings' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
+                            >
+                                <div className="flex items-center">
+                                    <LayoutDashboard size={20} className="flex-shrink-0" />
+                                    <span className={`ml-3 text-sm whitespace-nowrap transition-all duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>Dashboard</span>
+                                </div>
+                                {isSidebarOpen && (
+                                    <ChevronDown 
+                                        size={18} 
+                                        className={`flex-shrink-0 transition-transform duration-300 ${isDashboardExpanded ? 'rotate-180' : ''}`}
+                                    />
+                                )}
+                            </button>
+                            
+                            {/* Dashboard Child Items */}
+                            {isDashboardExpanded && (
+                                <div className="ml-4 mt-2 space-y-1 border-l-2 border-gray-200 pl-2">
+                                    {/* Usage Analytics */}
+                                    <button 
+                                        onClick={() => handleTabChange('overview')}
+                                        className={`w-full flex items-center p-3 rounded-lg text-sm transition-colors ${activeTab === 'overview' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
+                                    >
+                                        <TrendingUp size={18} className="flex-shrink-0" />
+                                        <span className={`ml-3 whitespace-nowrap transition-all duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>Usage Analytics</span>
+                                    </button>
+                                    
+                                    {/* Material Ratings */}
+                                    <button 
+                                        onClick={() => handleTabChange('ratings')}
+                                        className={`w-full flex items-center p-3 rounded-lg text-sm transition-colors ${activeTab === 'ratings' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
+                                    >
+                                        <Star size={18} className="flex-shrink-0" />
+                                        <span className={`ml-3 whitespace-nowrap transition-all duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>Material Ratings</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                        
+                        {/* Feedback Manager - Top Level */}
+                        <button 
+                            onClick={() => handleTabChange('feedback')} 
+                            className={`w-full flex items-center p-3 rounded-lg transition-colors ${activeTab === 'feedback' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
+                        >
                             <MessageSquare size={20} className="flex-shrink-0" />
                             <span className={`ml-3 text-sm whitespace-nowrap transition-all duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>Feedback Manager</span>
-                        </button>
-                        <button onClick={() => handleTabChange('ratings')} className={`w-full flex items-center p-3 rounded-lg transition-colors ${activeTab === 'ratings' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}>
-                            <Star size={20} className="flex-shrink-0" />
-                            <span className={`ml-3 text-sm whitespace-nowrap transition-all duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>Material Ratings</span>
                         </button>
                     </nav>
                     <div className={`p-4 border-t border-gray-100 text-xs text-gray-400 text-center whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 h-0 p-0'}`}>

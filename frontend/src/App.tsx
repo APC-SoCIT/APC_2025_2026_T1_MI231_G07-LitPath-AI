@@ -88,10 +88,24 @@ const LegacyAdminDashboardRedirect = () => {
 };
 
 // ------------------------------------------------------------
-//  Redirect from old /admin/feedback (list) to dashboard with state
+//  Redirect from old /admin/feedback (list) to new nested route
 // ------------------------------------------------------------
 const RedirectToFeedbackTab = () => {
-    return <Navigate to={ROLE_PATHS.STAFF_DASHBOARD} replace state={{ activeTab: 'feedback' }} />;
+    return <Navigate to="/library-admin/dashboard/feedback-manager" replace />;
+};
+
+// ------------------------------------------------------------
+//  Redirect from old /admin/overview to new nested route
+// ------------------------------------------------------------
+const RedirectToUsageAnalytics = () => {
+    return <Navigate to="/library-admin/dashboard/usage-analytics" replace />;
+};
+
+// ------------------------------------------------------------
+//  Redirect from old /admin/material-ratings to new nested route
+// ------------------------------------------------------------
+const RedirectToMaterialRatings = () => {
+    return <Navigate to="/library-admin/dashboard/material-ratings" replace />;
 };
 
 // ------------------------------------------------------------
@@ -111,6 +125,9 @@ const AppContent = () => {
 
             {/* Staff dashboard – Library Administrator hub */}
             <Route path="/library-admin/dashboard" element={<ProtectedRoute allowedRoles={['staff']}><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/library-admin/dashboard/usage-analytics" element={<ProtectedRoute allowedRoles={['staff']}><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/library-admin/dashboard/material-ratings" element={<ProtectedRoute allowedRoles={['staff']}><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/library-admin/dashboard/feedback-manager" element={<ProtectedRoute allowedRoles={['staff']}><AdminDashboard /></ProtectedRoute>} />
 
             {/* IT admin dashboard */}
             <Route path="/it-admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><ITAdminDashboard /></ProtectedRoute>} />
@@ -118,8 +135,10 @@ const AppContent = () => {
             {/* Backward-compatible redirect from the old path */}
             <Route path="/admin/dashboard" element={<ProtectedRoute><LegacyAdminDashboardRedirect /></ProtectedRoute>} />
 
-            {/* Redirect old /admin/feedback (list) to dashboard with feedback tab active */}
+            {/* Redirect old paths to new nested routes */}
             <Route path="/admin/feedback" element={<ProtectedRoute allowedRoles={['staff']}><RedirectToFeedbackTab /></ProtectedRoute>} />
+            <Route path="/admin/overview" element={<ProtectedRoute allowedRoles={['staff']}><RedirectToUsageAnalytics /></ProtectedRoute>} />
+            <Route path="/admin/material-ratings" element={<ProtectedRoute allowedRoles={['staff']}><RedirectToMaterialRatings /></ProtectedRoute>} />
 
             {/* ✅ DETAIL PAGE – still exists, back button returns to dashboard */}
             <Route path="/admin/feedback/:id" element={<ProtectedRoute allowedRoles={['staff']}><FeedbackDetail /></ProtectedRoute>} />
