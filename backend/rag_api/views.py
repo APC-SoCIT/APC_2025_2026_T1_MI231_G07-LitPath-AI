@@ -2107,38 +2107,50 @@ def dashboard_top_search_queries(request):
     ])
 
 
-# ============= Material Ratings – Least Browsed Theses =============
+# ============= Material Ratings – Least Viewed Theses (Feature 13.0) =============
 @api_view(['GET'])
 @require_staff_or_admin
 def dashboard_least_browsed(request):
     """
     GET /api/dashboard/least-browsed/
     Returns materials with the lowest view counts within the date range.
-    Useful for identifying candidates for archiving.
+    Includes upload date and dormancy classification:
+    - Dormant: Never accessed OR not accessed for 30+ days AND uploaded 30+ days ago
+    - Recently Uploaded: Uploaded within the last 30 days
     """
     try:
+        from django.utils import timezone
+        from datetime import timedelta
+        
         limit = int(request.GET.get('limit', 8))
         from_date, to_date = parse_date_range(request.GET.get('from'), request.GET.get('to'))
+        now = timezone.now()
+        thirty_days_ago = now - timedelta(days=30)
 
         with connection.cursor() as cursor:
-            # We use a LEFT JOIN to ensure we catch materials with 0 views.
-            # UPDATED QUERY: Added m.year to SELECT and GROUP BY
+            # Include created_at and calculate dormancy flags
             cursor.execute("""
                 SELECT 
                     m.id,
                     m.file,
                     m.title,
-                    m.year,  -- <--- ADDED THIS
+                    m.year,
+                    m.created_at,
                     MAX(mv.viewed_at) as last_accessed,
-                    COUNT(mv.id) as view_count
+                    COUNT(mv.id) as view_count,
+                    -- Dormant: (never accessed AND uploaded 30+ days ago) OR (last accessed 30+ days ago AND uploaded 30+ days ago)
+                    ((MAX(mv.viewed_at) IS NULL AND m.created_at < %s) OR 
+                     (MAX(mv.viewed_at) < %s AND m.created_at < %s)) as is_dormant,
+                    -- Recently uploaded: uploaded within 30 days
+                    (m.created_at >= %s) as is_recently_uploaded
                 FROM materials m
                 LEFT JOIN material_views mv 
                     ON m.file = mv.file 
                     AND mv.viewed_at BETWEEN %s AND %s
-                GROUP BY m.id, m.file, m.title, m.year -- <--- ADDED m.year HERE
+                GROUP BY m.id, m.file, m.title, m.year, m.created_at
                 ORDER BY view_count ASC, last_accessed ASC
                 LIMIT %s
-            """, [from_date, to_date, limit])
+            """, [thirty_days_ago, thirty_days_ago, thirty_days_ago, thirty_days_ago, from_date, to_date, limit])
             
             columns = [col[0] for col in cursor.description]
             results = [dict(zip(columns, row)) for row in cursor.fetchall()]
@@ -2152,16 +2164,44 @@ def dashboard_least_browsed(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-# ============= Material Ratings – Dormant Count =============
+# ============= Material Ratings – Dormant Materials Count (Feature 13.0) =============
 @api_view(['GET'])
 @require_staff_or_admin
 def dashboard_dormant_count(request):
-    with connection.cursor() as cursor:
-        cursor.execute("""
-            SELECT COUNT(DISTINCT m.id)
-            FROM materials m
-            LEFT JOIN material_views mv ON m.file = mv.file
-            WHERE mv.id IS NULL
-        """)
-        count = cursor.fetchone()[0]
-    return Response({'count': count})
+    """
+    GET /api/dashboard/dormant-count/
+    Returns count of dormant materials using 30-day inactivity rule.
+    Dormant = never accessed OR not accessed for 30+ days AND uploaded 30+ days ago.
+    """
+    try:
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        now = timezone.now()
+        thirty_days_ago = now - timedelta(days=30)
+        
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT COUNT(DISTINCT m.id)
+                FROM materials m
+                LEFT JOIN (
+                    SELECT file, MAX(viewed_at) as last_viewed
+                    FROM material_views
+                    GROUP BY file
+                ) mv_max ON m.file = mv_max.file
+                WHERE 
+                    -- Never accessed AND uploaded 30+ days ago
+                    (mv_max.last_viewed IS NULL AND m.created_at < %s)
+                    OR
+                    -- Not accessed in 30+ days AND uploaded 30+ days ago
+                    (mv_max.last_viewed < %s AND m.created_at < %s)
+            """, [thirty_days_ago, thirty_days_ago, thirty_days_ago])
+            count = cursor.fetchone()[0]
+        
+        return Response({'count': count})
+    except Exception as e:
+        print(f"Error in dashboard_dormant_count: {str(e)}")
+        return Response(
+            {"error": str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

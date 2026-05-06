@@ -8,6 +8,7 @@ from .models import (
     SecurityAuthenticationPolicy,
     SecurityAccessControlRule,
     SecurityAuditLogEntry,
+    Material,
 )
 from .password_validation import validate_password_strength
 from .system_settings import (
@@ -437,3 +438,23 @@ class SecurityAuditLogEntrySerializer(serializers.ModelSerializer):
             'created_by_name',
             'updated_by_name',
         ]
+
+
+class MaterialAdminSerializer(serializers.ModelSerializer):
+    """Serializer for Material (Thesis/Dissertation) data for admin operations (Feature 13.0)"""
+    
+    class Meta:
+        model = Material
+        fields = [
+            'id',
+            'file',
+            'title',
+            'author',
+            'year',
+            'abstract',
+            'degree',
+            'subjects',
+            'school',
+            'created_at',  # Upload date (Feature 13.0)
+        ]
+        read_only_fields = ['id', 'created_at']

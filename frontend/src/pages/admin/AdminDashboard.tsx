@@ -2079,8 +2079,11 @@ const AdminDashboard = () => {
             rows.push(["Filter Period", filterDescription]);
             rows.push(["Total Ratings (filtered)", filteredRatings.length]);
 
-            const dormantCount = allLeastAccessed.filter(m => m.view_count === 0).length;
-            rows.push(["Dormant Materials in Period (0 Views)", dormantCount]);
+            // Feature 13.0: Count dormant materials using 30-day rule
+            const dormantMaterialsCount = allLeastAccessed.filter(m => m.is_dormant).length;
+            const recentlyUploadedCount = allLeastAccessed.filter(m => m.is_recently_uploaded && !m.is_dormant).length;
+            rows.push(["Dormant Materials in Period (30+ days inactive)", dormantMaterialsCount]);
+            rows.push(["Recently Uploaded Materials in Period", recentlyUploadedCount]);
             rows.push([]); // empty line
 
             // --- SECTION 2: RATINGS LOG ---
@@ -2107,37 +2110,49 @@ const AdminDashboard = () => {
             rows.push([]);
             rows.push([]);
 
-            // --- SECTION 3: LEAST ACCESSED MATERIALS (ARCHIVE CANDIDATES) - FILTERED BY SAME DATE RANGE ---
-            rows.push(["--- PART 2: LEAST ACCESSED MATERIALS (ARCHIVE CANDIDATES) - FILTERED BY SAME PERIOD ---"]);
+            // --- SECTION 3: LEAST VIEWED MATERIALS (Feature 13.0) - FILTERED BY SAME DATE RANGE ---
+            rows.push(["--- PART 2: LEAST VIEWED MATERIALS (Feature 13.0) - FILTERED BY SAME PERIOD ---"]);
 
             if (allLeastAccessed && allLeastAccessed.length > 0) {
-                rows.push(["Material Title", "Year", "Last Accessed", "Total Views", "Status"]);
+                rows.push(["Material Title", "Year", "Uploaded", "Last Accessed", "Total Views", "Status", "Dormancy"]);
 
                 allLeastAccessed.forEach(m => {
+                    const uploaded = m.created_at ? new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
                     const lastAccess = m.last_accessed ? new Date(m.last_accessed).toLocaleDateString() : 'Never';
                     const views = m.view_count || 0;
-                    // Smart Labeling based on engagement
-                    let status = "Active"; // Default for high views
+                    
+                    // Dormancy classification (Feature 13.0)
+                    let dormancyStatus = "Active";
+                    if (m.is_recently_uploaded && !m.is_dormant) {
+                        dormancyStatus = "Recently Uploaded";
+                    } else if (m.is_dormant) {
+                        dormancyStatus = "Dormant";
+                    }
+                    
+                    // Engagement classification
+                    let engagementStatus = "Active"; // Default for high views
                     if (views === 0) {
-                        status = "DORMANT (0 Views)";
+                        engagementStatus = "0 Views";
                     } else if (views < 20) {
-                        status = "Low Engagement";
+                        engagementStatus = "Low Engagement";
                     } else if (views < 100) {
-                        status = "Moderate Engagement";
+                        engagementStatus = "Moderate Engagement";
                     } else {
-                        status = "High Engagement";
+                        engagementStatus = "High Engagement";
                     }
 
                     rows.push([
                         escape(m.title || m.file || 'Unknown'),
                         escape(m.year || '-'),
+                        escape(uploaded),
                         escape(lastAccess),
                         views,
-                        escape(status)
+                        escape(engagementStatus),
+                        escape(dormancyStatus)
                     ]);
                 });
             } else {
-                rows.push(["Note: No least accessed materials found in the selected period."]);
+                rows.push(["Note: No least viewed materials found in the selected period."]);
             }
 
             // Convert rows to CSV string
@@ -2291,16 +2306,16 @@ const AdminDashboard = () => {
                 yPos += 5;
             });
 
-            // Add least accessed materials section if data exists after filtering
+            // Add least viewed materials section if data exists after filtering (Feature 13.0)
             if (allLeastAccessed && allLeastAccessed.length > 0) {
                 doc.addPage();
                 yPos = 20;
                 
                 doc.setFontSize(14);
-                doc.text("LEAST ACCESSED MATERIALS (ARCHIVE CANDIDATES)", 20, yPos);
+                doc.text("LEAST VIEWED MATERIALS (Feature 13.0)", 20, yPos);
                 yPos += 6;
                 doc.setFontSize(10);
-                doc.text(`Filtered by period: ${filterDescription}`, 20, yPos);
+                doc.text(`Filtered by period: ${filterDescription} | Dormant = Not accessed 30+ days OR never accessed (uploaded 30+ days ago)`, 20, yPos);
                 yPos += 8;
                 
                 allLeastAccessed.forEach((m, index) => {
@@ -4597,16 +4612,16 @@ const AdminDashboard = () => {
                                         </p>
                                         <div className="relative group">
                                             <Info size={14} className="text-gray-400 cursor-help hover:text-gray-600" />
-                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none w-48">
+                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none w-64">
                                                 <div className="bg-gray-800 text-white text-[10px] px-3 py-2 rounded shadow-lg text-center">
-                                                    Number of materials that have never been accessed.
+                                                    Materials not accessed for 30+ days or never accessed (and uploaded 30+ days ago).
                                                 </div>
                                                 <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-gray-800"></div>
                                             </div>
                                         </div>
                                     </div>
                                     <p className="text-2xl font-bold text-gray-900 mt-2">{formatNumber(dormantCount)}</p>
-                                    <p className="text-xs text-gray-400 mt-1">Never accessed</p>
+                                    <p className="text-xs text-gray-400 mt-1">Dormant (30+ days)</p>
                                 </div>
                             </div>
 
@@ -4680,18 +4695,18 @@ const AdminDashboard = () => {
                                     </div>
                                 </div>
 
-                                {/* 2. Least Accessed Materials */}
+                                {/* 2. Least Viewed Materials (Feature 13.0) */}
                                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col h-full">
                                     <div className="flex items-center gap-1.5 mb-2 border-b border-gray-100 pb-3">
                                         <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
-                                            <LogOut size={16} className="text-red-500" />
-                                            Top 8 Least Accessed Materials
+                                            <TrendingUp size={16} className="text-orange-500" />
+                                            Least Viewed Materials
                                         </h3>
                                         <div className="relative group">
                                             <Info size={14} className="text-gray-400 cursor-help hover:text-gray-600" />
                                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none w-64">
                                                 <div className="bg-gray-800 text-white text-[10px] px-3 py-2 rounded shadow-lg text-center">
-                                                    Materials with the lowest number of views. Consider reviewing these for potential archiving or promotion to increase engagement.
+                                                    Materials with the lowest number of views. Dormant materials are not accessed for 30+ days. Recently uploaded materials are shown separately.
                                                 </div>
                                                 <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-gray-800"></div>
                                             </div>
@@ -4702,23 +4717,39 @@ const AdminDashboard = () => {
                                         {leastAccessedMaterials.length > 0 ? (
                                             <div className="space-y-2">
                                                 {leastAccessedMaterials.slice(0, 8).map((item, index) => (
-                                                    <div key={index} className="flex items-center justify-between p-1.5 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100 group">
-                                                        <div className="flex items-center gap-2 overflow-hidden">
-                                                            <div className="flex-shrink-0 bg-red-100 text-red-600 p-1.5 rounded-md">
-                                                                <BookOpen size={14} className="text-red-600" />
+                                                    <div key={index} className="flex items-start justify-between p-2 hover:bg-orange-50 rounded-lg transition-colors border border-transparent hover:border-orange-100 group">
+                                                        <div className="flex items-start gap-2 overflow-hidden flex-1">
+                                                            <div className="flex-shrink-0 bg-orange-100 text-orange-600 p-1.5 rounded-md mt-0.5">
+                                                                <BookOpen size={14} className="text-orange-600" />
                                                             </div>
-                                                            <div className="min-w-0">
+                                                            <div className="min-w-0 flex-1">
                                                                 <p className="text-xs font-medium text-gray-700 truncate group-hover:text-gray-900" title={item.title}>
                                                                     {item.title}
                                                                 </p>
-                                                                <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                                                                <p className="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
+                                                                    <Calendar size={10} />
+                                                                    Uploaded: {item.created_at ? new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                                                                </p>
+                                                                <p className="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
                                                                     <Clock size={10} />
                                                                     Last accessed: {item.last_accessed ? new Date(item.last_accessed).toLocaleDateString() : 'Never'}
                                                                 </p>
+                                                                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                                                    {item.is_recently_uploaded && !item.is_dormant && (
+                                                                        <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-semibold">
+                                                                            Recently Uploaded
+                                                                        </span>
+                                                                    )}
+                                                                    {item.is_dormant && (
+                                                                        <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-[10px] font-semibold">
+                                                                            Dormant
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                        <div className="flex-shrink-0 text-right pl-2">
-                                                            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] font-bold border border-gray-200">
+                                                        <div className="flex-shrink-0 text-right pl-2 mt-0.5">
+                                                            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] font-bold border border-gray-200 inline-block">
                                                                 {item.view_count || 0} views
                                                             </span>
                                                         </div>
