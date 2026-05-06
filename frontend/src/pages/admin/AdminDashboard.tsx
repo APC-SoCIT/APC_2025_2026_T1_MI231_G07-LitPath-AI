@@ -2916,8 +2916,12 @@ const AdminDashboard = () => {
                             <div className="max-w-[1600px] mx-auto w-full flex flex-col gap-2">
 
                                 {/* ===== HEADER + DATE FILTER ===== */}
-                                <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+
+                                <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+                                <div>
                                     <h2 className="text-xl font-bold text-gray-800">Thesis & Dissertation Usage</h2>
+                                    <p className="text-sm text-gray-500">Track thesis and dissertation activity across the platform</p>
+                                </div>
                                     <div className="flex gap-2">
 
                                         {/* EXPORT DROPDOWN BUTTON */}
@@ -3856,308 +3860,308 @@ const AdminDashboard = () => {
                     {/* ----- FEEDBACK MANAGER TAB ----- */}
                     {activeTab === 'feedback' && (
                         <div className="h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden max-w-[1600px] mx-auto w-full mt-4">
-                            <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-col gap-4 flex-none">
-                                {/* Row 1: Title and Clock */}
-                                <div className="flex justify-between items-start">
+                            <div className="p-4 border-b border-gray-200 bg-gray-50 flex-none">
+                                <div className="flex items-center justify-between flex-wrap gap-2">
                                     <div>
-                                        <h2 className="text-lg font-bold text-gray-800">CSM Feedback</h2>
-                                        <p className="text-xs text-gray-500">Manage client satisfaction responses</p>
+                                        <h2 className="text-xl font-bold text-gray-800">CSM Feedback</h2>
+                                        <p className="text-sm text-gray-500">Manage client satisfaction responses</p>
                                     </div>
-                                </div>
-                                {/* Row 2: Export and Filters */}
-                                <div className="flex gap-3 items-center justify-end">
-                                    {/* Export Dropdown Button */}
-                                    <div className="relative" ref={feedbackExportDropdownRef}>
-                                        <button
-                                            onClick={() => setShowFeedbackExportDropdown(!showFeedbackExportDropdown)}
-                                            className="flex items-center space-x-2 px-3 py-1.5 border border-[#1E74BC] rounded-md bg-white text-[#1E74BC] hover:bg-blue-50 text-xs font-bold transition-colors shadow-sm"
-                                            title="Export filtered feedback"
-                                        >
-                                            <Download size={14} />
-                                            <span>Export Data</span>
-                                            <ChevronDown size={14} />
-                                        </button>
+                                
+                                    {/* Row 2: Export and Filters */}
+                                    <div className="flex gap-3 items-center">
+                                        {/* Export Dropdown Button */}
+                                        <div className="relative" ref={feedbackExportDropdownRef}>
+                                            <button
+                                                onClick={() => setShowFeedbackExportDropdown(!showFeedbackExportDropdown)}
+                                                className="flex items-center space-x-2 px-3 py-1.5 border border-[#1E74BC] rounded-md bg-white text-[#1E74BC] hover:bg-blue-50 text-xs font-bold transition-colors shadow-sm"
+                                                title="Export filtered feedback"
+                                            >
+                                                <Download size={14} />
+                                                <span>Export Data</span>
+                                                <ChevronDown size={14} />
+                                            </button>
 
-                                        {showFeedbackExportDropdown && (
-                                            <div className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-30 min-w-[180px]">
-                                                <button
-                                                    onClick={() => {
-                                                        handleFeedbackExportCSV();
-                                                        setShowFeedbackExportDropdown(false);
-                                                    }}
-                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 first:rounded-t-lg transition-colors"
-                                                >
-                                                    Export as CSV
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        handleFeedbackExportPDF();
-                                                        setShowFeedbackExportDropdown(false);
-                                                    }}
-                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 last:rounded-b-lg transition-colors"
-                                                >
-                                                    Export as PDF
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Date Filter Dropdown */}
-                                    <div className="relative" ref={feedbackDateDropdownRef}>
-                                        <button
-                                            onClick={() => setShowFeedbackDateDropdown(!showFeedbackDateDropdown)}
-                                            className="flex items-center space-x-2 px-3 py-1.5 border border-gray-400 rounded-md bg-white text-gray-650 hover:bg-gray-100 text-xs font-medium"
-                                        >
-                                            <Calendar size={14} />
-                                            <span>
-                                                {feedbackDateFilterType === 'All' && 'All dates'}
-                                                {feedbackDateFilterType === 'Year' && `Year ${feedbackSelectedYear}`}
-                                                {feedbackDateFilterType === 'Last 7 days' && 'Last 7 days'}
-                                                {feedbackDateFilterType === 'Month' && `${new Date(0, feedbackSelectedMonth-1).toLocaleString('default', { month: 'long' })} ${feedbackSelectedMonthYear}`}
-                                                {feedbackDateFilterType === 'Custom range' && 'Custom range'}
-                                            </span>
-                                            <ChevronDown size={14} />
-                                        </button>
-
-                                        {showFeedbackDateDropdown && (
-                                            <div className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-30 min-w-[260px] p-3">
-                                                {/* Filter type options */}
-                                                {feedbackDateFilterOptions.map(opt => (
+                                            {showFeedbackExportDropdown && (
+                                                <div className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-30 min-w-[180px]">
                                                     <button
-                                                        key={opt}
                                                         onClick={() => {
-                                                            setFeedbackDateFilterType(opt);
-                                                            if (opt === 'Last 7 days') {
-                                                                setShowFeedbackDateDropdown(false);
-                                                            }
-                                                            if (opt !== 'Custom range') {
-                                                                setFeedbackCustomFrom('');
-                                                                setFeedbackCustomTo('');
-                                                            }
+                                                            handleFeedbackExportCSV();
+                                                            setShowFeedbackExportDropdown(false);
                                                         }}
-                                                        className={`block w-full text-left px-3 py-2 text-xs rounded-md ${
-                                                            feedbackDateFilterType === opt
-                                                                ? 'bg-blue-50 text-blue-600 font-bold'
-                                                                : 'hover:bg-gray-50'
-                                                        }`}
+                                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 first:rounded-t-lg transition-colors"
                                                     >
-                                                        {opt}
+                                                        Export as CSV
                                                     </button>
-                                                ))}
+                                                    <button
+                                                        onClick={() => {
+                                                            handleFeedbackExportPDF();
+                                                            setShowFeedbackExportDropdown(false);
+                                                        }}
+                                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 last:rounded-b-lg transition-colors"
+                                                    >
+                                                        Export as PDF
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
 
-                                                {/* Year picker */}
-                                                {feedbackDateFilterType === 'Year' && (
-                                                    <div className="mt-2 pt-2 border-t border-gray-100">
-                                                        <label className="block text-[10px] font-medium text-gray-500 mb-1">
-                                                            Select year
-                                                        </label>
-                                                        <select
-                                                            aria-label="Select year for feedback filter"
-                                                            value={feedbackSelectedYear}
-                                                            onChange={(e) => setFeedbackSelectedYear(parseInt(e.target.value))}
-                                                            className="w-full text-xs border border-gray-300 rounded-md p-1.5 focus:ring-blue-500 focus:border-blue-500"
-                                                        >
-                                                            {yearOptions.map(year => (
-                                                                <option key={year} value={year}>{year}</option>
-                                                            ))}
-                                                        </select>
+                                        {/* Date Filter Dropdown */}
+                                        <div className="relative" ref={feedbackDateDropdownRef}>
+                                            <button
+                                                onClick={() => setShowFeedbackDateDropdown(!showFeedbackDateDropdown)}
+                                                className="flex items-center space-x-2 px-3 py-1.5 border border-gray-400 rounded-md bg-white text-gray-650 hover:bg-gray-100 text-xs font-medium"
+                                            >
+                                                <Calendar size={14} />
+                                                <span>
+                                                    {feedbackDateFilterType === 'All' && 'All dates'}
+                                                    {feedbackDateFilterType === 'Year' && `Year ${feedbackSelectedYear}`}
+                                                    {feedbackDateFilterType === 'Last 7 days' && 'Last 7 days'}
+                                                    {feedbackDateFilterType === 'Month' && `${new Date(0, feedbackSelectedMonth-1).toLocaleString('default', { month: 'long' })} ${feedbackSelectedMonthYear}`}
+                                                    {feedbackDateFilterType === 'Custom range' && 'Custom range'}
+                                                </span>
+                                                <ChevronDown size={14} />
+                                            </button>
+
+                                            {showFeedbackDateDropdown && (
+                                                <div className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-30 min-w-[260px] p-3">
+                                                    {/* Filter type options */}
+                                                    {feedbackDateFilterOptions.map(opt => (
                                                         <button
-                                                            onClick={() => setShowFeedbackDateDropdown(false)}
-                                                            className="w-full mt-3 bg-blue-600 text-white text-xs py-1.5 rounded hover:bg-blue-700 transition-colors font-medium"
+                                                            key={opt}
+                                                            onClick={() => {
+                                                                setFeedbackDateFilterType(opt);
+                                                                if (opt === 'Last 7 days') {
+                                                                    setShowFeedbackDateDropdown(false);
+                                                                }
+                                                                if (opt !== 'Custom range') {
+                                                                    setFeedbackCustomFrom('');
+                                                                    setFeedbackCustomTo('');
+                                                                }
+                                                            }}
+                                                            className={`block w-full text-left px-3 py-2 text-xs rounded-md ${
+                                                                feedbackDateFilterType === opt
+                                                                    ? 'bg-blue-50 text-blue-600 font-bold'
+                                                                    : 'hover:bg-gray-50'
+                                                            }`}
                                                         >
-                                                            Apply
+                                                            {opt}
                                                         </button>
-                                                    </div>
-                                                )}
+                                                    ))}
 
-                                                {/* Month picker */}
-                                                {feedbackDateFilterType === 'Month' && (
-                                                    <div className="mt-2 pt-2 border-t border-gray-100">
-                                                        <div className="flex flex-col gap-2">
-                                                            <div>
-                                                                <label className="block text-[10px] font-medium text-gray-500 mb-1">
-                                                                    Month
-                                                                </label>
-                                                                <select
-                                                                    aria-label="Select month for feedback filter"
-                                                                    value={feedbackSelectedMonth}
-                                                                    onChange={(e) => setFeedbackSelectedMonth(parseInt(e.target.value))}
-                                                                    className="w-full text-xs border border-gray-300 rounded-md p-1.5 focus:ring-blue-500 focus:border-blue-500"
-                                                                >
-                                                                    {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                                                                        <option key={month} value={month}>
-                                                                            {new Date(0, month-1).toLocaleString('default', { month: 'long' })}
-                                                                        </option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-[10px] font-medium text-gray-500 mb-1">
-                                                                    Year
-                                                                </label>
-                                                                <select
-                                                                    aria-label="Select year for feedback month filter"
-                                                                    value={feedbackSelectedMonthYear}
-                                                                    onChange={(e) => setFeedbackSelectedMonthYear(parseInt(e.target.value))}
-                                                                    className="w-full text-xs border border-gray-300 rounded-md p-1.5 focus:ring-blue-500 focus:border-blue-500"
-                                                                >
-                                                                    {yearOptions.map(year => (
-                                                                        <option key={year} value={year}>{year}</option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
+                                                    {/* Year picker */}
+                                                    {feedbackDateFilterType === 'Year' && (
+                                                        <div className="mt-2 pt-2 border-t border-gray-100">
+                                                            <label className="block text-[10px] font-medium text-gray-500 mb-1">
+                                                                Select year
+                                                            </label>
+                                                            <select
+                                                                aria-label="Select year for feedback filter"
+                                                                value={feedbackSelectedYear}
+                                                                onChange={(e) => setFeedbackSelectedYear(parseInt(e.target.value))}
+                                                                className="w-full text-xs border border-gray-300 rounded-md p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                                                            >
+                                                                {yearOptions.map(year => (
+                                                                    <option key={year} value={year}>{year}</option>
+                                                                ))}
+                                                            </select>
                                                             <button
                                                                 onClick={() => setShowFeedbackDateDropdown(false)}
-                                                                className="w-full bg-blue-600 text-white text-xs py-1.5 rounded hover:bg-blue-700 transition-colors font-medium"
+                                                                className="w-full mt-3 bg-blue-600 text-white text-xs py-1.5 rounded hover:bg-blue-700 transition-colors font-medium"
                                                             >
                                                                 Apply
                                                             </button>
                                                         </div>
-                                                    </div>
-                                                )}
+                                                    )}
 
-                                                {/* Custom range picker */}
-                                                {feedbackDateFilterType === 'Custom range' && (
-                                                    <div className="mt-2 pt-2 border-t border-gray-100">
-                                                        <div className="flex flex-col gap-2">
-                                                            <div>
-                                                                <span className="text-[10px] text-gray-500 mb-1 block">From</span>
-                                                                <input
-                                                                    type="date"
-                                                                    value={feedbackCustomFrom}
-                                                                    onChange={(e) => setFeedbackCustomFrom(e.target.value)}
-                                                                    className="w-full text-xs border border-gray-300 rounded-md p-1.5"
-                                                                />
+                                                    {/* Month picker */}
+                                                    {feedbackDateFilterType === 'Month' && (
+                                                        <div className="mt-2 pt-2 border-t border-gray-100">
+                                                            <div className="flex flex-col gap-2">
+                                                                <div>
+                                                                    <label className="block text-[10px] font-medium text-gray-500 mb-1">
+                                                                        Month
+                                                                    </label>
+                                                                    <select
+                                                                        aria-label="Select month for feedback filter"
+                                                                        value={feedbackSelectedMonth}
+                                                                        onChange={(e) => setFeedbackSelectedMonth(parseInt(e.target.value))}
+                                                                        className="w-full text-xs border border-gray-300 rounded-md p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                                                                    >
+                                                                        {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                                                                            <option key={month} value={month}>
+                                                                                {new Date(0, month-1).toLocaleString('default', { month: 'long' })}
+                                                                            </option>
+                                                                        ))}
+                                                                    </select>
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-[10px] font-medium text-gray-500 mb-1">
+                                                                        Year
+                                                                    </label>
+                                                                    <select
+                                                                        aria-label="Select year for feedback month filter"
+                                                                        value={feedbackSelectedMonthYear}
+                                                                        onChange={(e) => setFeedbackSelectedMonthYear(parseInt(e.target.value))}
+                                                                        className="w-full text-xs border border-gray-300 rounded-md p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                                                                    >
+                                                                        {yearOptions.map(year => (
+                                                                            <option key={year} value={year}>{year}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => setShowFeedbackDateDropdown(false)}
+                                                                    className="w-full bg-blue-600 text-white text-xs py-1.5 rounded hover:bg-blue-700 transition-colors font-medium"
+                                                                >
+                                                                    Apply
+                                                                </button>
                                                             </div>
-                                                            <div>
-                                                                <span className="text-[10px] text-gray-500 mb-1 block">To</span>
-                                                                <input
-                                                                    type="date"
-                                                                    value={feedbackCustomTo}
-                                                                    onChange={(e) => setFeedbackCustomTo(e.target.value)}
-                                                                    className="w-full text-xs border border-gray-300 rounded-md p-1.5"
-                                                                />
-                                                            </div>
-                                                            <button
-                                                                onClick={() => {
-                                                                    if (feedbackCustomFrom && feedbackCustomTo) {
-                                                                        setShowFeedbackDateDropdown(false);
-                                                                    } else {
-                                                                        showToast('Select both dates', 'error');
-                                                                    }
-                                                                }}
-                                                                className="w-full bg-blue-600 text-white text-xs py-1.5 rounded hover:bg-blue-700 transition-colors font-medium"
-                                                            >
-                                                                Apply Range
-                                                            </button>
                                                         </div>
+                                                    )}
+
+                                                    {/* Custom range picker */}
+                                                    {feedbackDateFilterType === 'Custom range' && (
+                                                        <div className="mt-2 pt-2 border-t border-gray-100">
+                                                            <div className="flex flex-col gap-2">
+                                                                <div>
+                                                                    <span className="text-[10px] text-gray-500 mb-1 block">From</span>
+                                                                    <input
+                                                                        type="date"
+                                                                        value={feedbackCustomFrom}
+                                                                        onChange={(e) => setFeedbackCustomFrom(e.target.value)}
+                                                                        className="w-full text-xs border border-gray-300 rounded-md p-1.5"
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-[10px] text-gray-500 mb-1 block">To</span>
+                                                                    <input
+                                                                        type="date"
+                                                                        value={feedbackCustomTo}
+                                                                        onChange={(e) => setFeedbackCustomTo(e.target.value)}
+                                                                        className="w-full text-xs border border-gray-300 rounded-md p-1.5"
+                                                                    />
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        if (feedbackCustomFrom && feedbackCustomTo) {
+                                                                            setShowFeedbackDateDropdown(false);
+                                                                        } else {
+                                                                            showToast('Select both dates', 'error');
+                                                                        }
+                                                                    }}
+                                                                    className="w-full bg-blue-600 text-white text-xs py-1.5 rounded hover:bg-blue-700 transition-colors font-medium"
+                                                                >
+                                                                    Apply Range
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Clear Filter button (disabled when filter type is 'All') */}
+                                                    <div className="mt-3 pt-2 border-t border-gray-100">
+                                                        <button
+                                                            onClick={() => {
+                                                                setFeedbackDateFilterType('All');
+                                                                setFeedbackSelectedYear(new Date().getFullYear());
+                                                                setFeedbackSelectedMonth(new Date().getMonth() + 1);
+                                                                setFeedbackSelectedMonthYear(new Date().getFullYear());
+                                                                setFeedbackCustomFrom('');
+                                                                setFeedbackCustomTo('');
+                                                                setShowFeedbackDateDropdown(false);
+                                                            }}
+                                                            disabled={feedbackDateFilterType === 'All'}
+                                                            className={`w-full text-xs py-1.5 rounded border transition-colors ${
+                                                                feedbackDateFilterType === 'All'
+                                                                    ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                                                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50 hover:text-red-600'
+                                                            }`}
+                                                        >
+                                                            Clear Filter
+                                                        </button>
                                                     </div>
-                                                )}
-
-                                                {/* Clear Filter button (disabled when filter type is 'All') */}
-                                                <div className="mt-3 pt-2 border-t border-gray-100">
-                                                    <button
-                                                        onClick={() => {
-                                                            setFeedbackDateFilterType('All');
-                                                            setFeedbackSelectedYear(new Date().getFullYear());
-                                                            setFeedbackSelectedMonth(new Date().getMonth() + 1);
-                                                            setFeedbackSelectedMonthYear(new Date().getFullYear());
-                                                            setFeedbackCustomFrom('');
-                                                            setFeedbackCustomTo('');
-                                                            setShowFeedbackDateDropdown(false);
-                                                        }}
-                                                        disabled={feedbackDateFilterType === 'All'}
-                                                        className={`w-full text-xs py-1.5 rounded border transition-colors ${
-                                                            feedbackDateFilterType === 'All'
-                                                                ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                                                                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50 hover:text-red-600'
-                                                        }`}
-                                                    >
-                                                        Clear Filter
-                                                    </button>
                                                 </div>
-                                            </div>
-                                        )}
-                                    </div>
+                                            )}
+                                        </div>
 
-                                    {/* Client Type filter dropdown */}
-                                    <div className="relative">
-                                        <button
-                                            onClick={() => setShowClientTypeDropdown(!showClientTypeDropdown)}
-                                            className="flex items-center space-x-2 px-3 py-1.5 border border-gray-400 rounded-md bg-white text-gray-650 hover:bg-gray-100 text-xs font-medium"
-                                        >
-                                            <span>
-                                                {feedbackCategoryFilter === 'All' ? 'All Client Types' : feedbackCategoryFilter}
-                                            </span>
-                                            <ChevronDown size={14} className={`transition-transform ${showClientTypeDropdown ? 'rotate-180' : ''}`} />
-                                        </button>
+                                        {/* Client Type filter dropdown */}
+                                        <div className="relative">
+                                            <button
+                                                onClick={() => setShowClientTypeDropdown(!showClientTypeDropdown)}
+                                                className="flex items-center space-x-2 px-3 py-1.5 border border-gray-400 rounded-md bg-white text-gray-650 hover:bg-gray-100 text-xs font-medium"
+                                            >
+                                                <span>
+                                                    {feedbackCategoryFilter === 'All' ? 'All Client Types' : feedbackCategoryFilter}
+                                                </span>
+                                                <ChevronDown size={14} className={`transition-transform ${showClientTypeDropdown ? 'rotate-180' : ''}`} />
+                                            </button>
 
-                                        {showClientTypeDropdown && (
-                                            <div className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-30 min-w-[160px] p-1">
-                                                {[
-                                                    { value: 'All', label: 'All Client Types' },
-                                                    { value: 'Student', label: 'Student' },
-                                                    { value: 'Faculty', label: 'Faculty' },
-                                                    { value: 'DOST', label: 'DOST' },
-                                                    { value: 'Librarian', label: 'Librarian' },
-                                                    { value: 'Guest', label: 'Guest' }
-                                                ].map(option => (
-                                                    <button
-                                                        key={option.value}
-                                                        onClick={() => {
-                                                            setFeedbackCategoryFilter(option.value);
-                                                            setShowClientTypeDropdown(false);
-                                                        }}
-                                                        className={`block w-full text-left px-3 py-2 text-xs rounded-md ${
-                                                            feedbackCategoryFilter === option.value
-                                                                ? 'bg-blue-50 text-blue-600 font-bold'
-                                                                : 'hover:bg-gray-50'
-                                                        }`}
-                                                    >
-                                                        {option.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
+                                            {showClientTypeDropdown && (
+                                                <div className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-30 min-w-[160px] p-1">
+                                                    {[
+                                                        { value: 'All', label: 'All Client Types' },
+                                                        { value: 'Student', label: 'Student' },
+                                                        { value: 'Faculty', label: 'Faculty' },
+                                                        { value: 'DOST', label: 'DOST' },
+                                                        { value: 'Librarian', label: 'Librarian' },
+                                                        { value: 'Guest', label: 'Guest' }
+                                                    ].map(option => (
+                                                        <button
+                                                            key={option.value}
+                                                            onClick={() => {
+                                                                setFeedbackCategoryFilter(option.value);
+                                                                setShowClientTypeDropdown(false);
+                                                            }}
+                                                            className={`block w-full text-left px-3 py-2 text-xs rounded-md ${
+                                                                feedbackCategoryFilter === option.value
+                                                                    ? 'bg-blue-50 text-blue-600 font-bold'
+                                                                    : 'hover:bg-gray-50'
+                                                            }`}
+                                                        >
+                                                            {option.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
 
-                                    {/* Status filter dropdown */}
-                                    <div className="relative">
-                                        <button
-                                            onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                                            className="flex items-center space-x-2 px-3 py-1.5 border border-gray-400 rounded-md bg-white text-gray-650 hover:bg-gray-100 text-xs font-medium"
-                                        >
-                                            <span>
-                                                {feedbackStatusFilter === 'All' ? 'All Status' : feedbackStatusFilter}
-                                            </span>
-                                            <ChevronDown size={14} className={`transition-transform ${showStatusDropdown ? 'rotate-180' : ''}`} />
-                                        </button>
+                                        {/* Status filter dropdown */}
+                                        <div className="relative">
+                                            <button
+                                                onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+                                                className="flex items-center space-x-2 px-3 py-1.5 border border-gray-400 rounded-md bg-white text-gray-650 hover:bg-gray-100 text-xs font-medium"
+                                            >
+                                                <span>
+                                                    {feedbackStatusFilter === 'All' ? 'All Status' : feedbackStatusFilter}
+                                                </span>
+                                                <ChevronDown size={14} className={`transition-transform ${showStatusDropdown ? 'rotate-180' : ''}`} />
+                                            </button>
 
-                                        {showStatusDropdown && (
-                                            <div className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-30 min-w-[140px] p-1">
-                                                {[
-                                                    { value: 'All', label: 'All Status' },
-                                                    { value: 'Pending', label: 'Pending' },
-                                                    { value: 'Reviewed', label: 'Reviewed' },
-                                                    { value: 'Resolved', label: 'Resolved' }
-                                                ].map(option => (
-                                                    <button
-                                                        key={option.value}
-                                                        onClick={() => {
-                                                            setFeedbackStatusFilter(option.value);
-                                                            setShowStatusDropdown(false);
-                                                        }}
-                                                        className={`block w-full text-left px-3 py-2 text-xs rounded-md ${
-                                                            feedbackStatusFilter === option.value
-                                                                ? 'bg-blue-50 text-blue-600 font-bold'
-                                                                : 'hover:bg-gray-50'
-                                                        }`}
-                                                    >
-                                                        {option.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
+                                            {showStatusDropdown && (
+                                                <div className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-30 min-w-[140px] p-1">
+                                                    {[
+                                                        { value: 'All', label: 'All Status' },
+                                                        { value: 'Pending', label: 'Pending' },
+                                                        { value: 'Reviewed', label: 'Reviewed' },
+                                                        { value: 'Resolved', label: 'Resolved' }
+                                                    ].map(option => (
+                                                        <button
+                                                            key={option.value}
+                                                            onClick={() => {
+                                                                setFeedbackStatusFilter(option.value);
+                                                                setShowStatusDropdown(false);
+                                                            }}
+                                                            className={`block w-full text-left px-3 py-2 text-xs rounded-md ${
+                                                                feedbackStatusFilter === option.value
+                                                                    ? 'bg-blue-50 text-blue-600 font-bold'
+                                                                    : 'hover:bg-gray-50'
+                                                            }`}
+                                                        >
+                                                            {option.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -4303,16 +4307,15 @@ const AdminDashboard = () => {
                         <div className="h-full flex flex-col gap-2 max-w-[1600px] mx-auto w-full overflow-y-auto pb-8 pr-2">
 
                             {/* 1. Header & Filter Section */}
-                            <div className="flex flex-col gap-2">
-                                {/* Row 1: Title and Clock */}
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <h2 className="text-xl font-bold text-gray-800">Content Relevance & Quality</h2>
-                                        <p className="text-sm text-gray-500">Monitor user satisfaction and identify materials for archiving.</p>
-                                    </div>
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-800">Content Relevance & Quality</h2>
+                                    <p className="text-sm text-gray-500">Monitor user satisfaction and identify materials for archiving</p>
                                 </div>
+                                
+
                                 {/* Row 2: Export and Filters */}
-                                <div className="flex gap-2 items-center justify-end">
+                                <div className="flex gap-2 items-center">
                                     {/* Export Dropdown Button */}
                                     <div className="relative" ref={ratingsExportDropdownRef}>
                                         <button
