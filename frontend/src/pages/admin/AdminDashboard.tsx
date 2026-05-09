@@ -1799,29 +1799,6 @@ const AdminDashboard = () => {
             doc.text('Age Distribution', 14, yPos);
             yPos += 5;
             
-            // Capture Age Distribution chart
-            if (ageDistributionChartRef.current) {
-                try {
-                    const canvas = await html2canvas(ageDistributionChartRef.current, {
-                        scale: 2,
-                        useCORS: true,
-                        backgroundColor: '#ffffff'
-                    });
-                    const imgData = canvas.toDataURL('image/png');
-                    const imgWidth = 80;
-                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                    
-                    if (yPos + imgHeight + 10 > pageHeight - 10) {
-                        doc.addPage();
-                        yPos = 20;
-                    }
-                    
-                    doc.addImage(imgData, 'PNG', 14, yPos, imgWidth, imgHeight);
-                    yPos += imgHeight + 8;
-                } catch (err) {
-                    console.warn('Failed to capture Age Distribution chart:', err);
-                }
-            }
             
             // Age Distribution table
             const ageData = dashboardData.ageDistribution.map(age => [
