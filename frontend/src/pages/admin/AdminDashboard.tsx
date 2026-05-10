@@ -1702,9 +1702,9 @@ const AdminDashboard = () => {
             doc.text('Most Viewed Theses', 14, yPos);
             yPos += 5;
             
-            const topThesesData = dashboardData.topTheses.slice(0, 8).map((thesis, i) => [
+            const topThesesData = dashboardData.topTheses.slice(0, 10).map((thesis, i) => [
                 `${i + 1}`,
-                thesis.title.length > 50 ? thesis.title.substring(0, 50) + '...' : thesis.title,
+                thesis.title || 'Unknown',
                 thesis.author || 'Unknown',
                 thesis.view_count.toLocaleString()
             ]);
@@ -1714,15 +1714,20 @@ const AdminDashboard = () => {
                 head: [['Rank', 'Title', 'Author', 'Views']],
                 body: topThesesData,
                 theme: 'striped',
-                headStyles: { fillColor: [30, 116, 188], textColor: 255, fontStyle: 'bold' },
+                headStyles: { fillColor: [30, 116, 188], textColor: 255, fontStyle: 'bold', fontSize: 10 },
                 alternateRowStyles: { fillColor: [245, 248, 250] },
                 margin: { left: 14, right: 14 },
                 columnStyles: {
-                    0: { cellWidth: 15, halign: 'center', fontStyle: 'bold' },
-                    1: { cellWidth: 'auto' },
-                    2: { cellWidth: 40 },
-                    3: { cellWidth: 25, halign: 'right', fontStyle: 'bold' }
-                }
+                    0: { cellWidth: 12, halign: 'center', fontStyle: 'bold', fontSize: 9 },
+                    1: { cellWidth: 85, halign: 'left', fontSize: 9 },
+                    2: { cellWidth: 35, halign: 'left', fontSize: 9 },
+                    3: { cellWidth: 18, halign: 'right', fontStyle: 'bold', fontSize: 9 }
+                },
+                didDrawPage: () => {
+                    yPos = doc.lastAutoTable.finalY + 12;
+                },
+                bodyStyles: { cellPadding: 3, valign: 'middle' },
+                columnWidth: 'wrap'
             });
             
             yPos = doc.lastAutoTable.finalY + 12;
@@ -1840,8 +1845,8 @@ const AdminDashboard = () => {
             doc.text('Top Failed Queries', 14, yPos);
             yPos += 5;
             
-            const failedQueriesData = dashboardData.failedQueries.slice(0, 10).map(query => [
-                query.query.length > 60 ? query.query.substring(0, 60) + '...' : query.query,
+            const failedQueriesData = dashboardData.failedQueries.slice(0, 15).map(query => [
+                query.query || 'Unknown',
                 query.count.toLocaleString()
             ]);
             
@@ -1850,13 +1855,15 @@ const AdminDashboard = () => {
                 head: [['Query', 'Count']],
                 body: failedQueriesData,
                 theme: 'striped',
-                headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: 'bold' },
+                headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: 'bold', fontSize: 10 },
                 alternateRowStyles: { fillColor: [254, 242, 242] },
                 margin: { left: 14, right: 14 },
                 columnStyles: {
-                    0: { cellWidth: 'auto' },
-                    1: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }
-                }
+                    0: { cellWidth: 125, halign: 'left', fontSize: 9 },
+                    1: { cellWidth: 25, halign: 'right', fontStyle: 'bold', fontSize: 9 }
+                },
+                bodyStyles: { cellPadding: 3, valign: 'middle' },
+                columnWidth: 'wrap'
             });
             
             yPos = doc.lastAutoTable.finalY + 12;
@@ -2356,10 +2363,10 @@ const AdminDashboard = () => {
             doc.text('Top Rated Materials', 14, yPos);
             yPos += 5;
 
-            const topMaterials = getTopMaterials(filteredRatings).slice(0, 8);
+            const topMaterials = getTopMaterials(filteredRatings).slice(0, 10);
             const topMaterialsData = topMaterials.map((item, i) => [
                 `${i + 1}`,
-                item.title.length > 45 ? item.title.substring(0, 45) + '...' : item.title,
+                item.title || 'Unknown',
                 item.count.toLocaleString()
             ]);
 
@@ -2368,14 +2375,16 @@ const AdminDashboard = () => {
                 head: [['Rank', 'Material Title', 'Helpful Votes']],
                 body: topMaterialsData,
                 theme: 'striped',
-                headStyles: { fillColor: [34, 197, 94], textColor: 255, fontStyle: 'bold' },
+                headStyles: { fillColor: [34, 197, 94], textColor: 255, fontStyle: 'bold', fontSize: 10 },
                 alternateRowStyles: { fillColor: [245, 248, 250] },
                 margin: { left: 14, right: 14 },
                 columnStyles: {
-                    0: { cellWidth: 15, halign: 'center', fontStyle: 'bold' },
-                    1: { cellWidth: 'auto' },
-                    2: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }
-                }
+                    0: { cellWidth: 12, halign: 'center', fontStyle: 'bold', fontSize: 9 },
+                    1: { cellWidth: 110, halign: 'left', fontSize: 9 },
+                    2: { cellWidth: 28, halign: 'right', fontStyle: 'bold', fontSize: 9 }
+                },
+                bodyStyles: { cellPadding: 3, valign: 'middle' },
+                columnWidth: 'wrap'
             });
 
             yPos = doc.lastAutoTable.finalY + 12;
@@ -2394,13 +2403,11 @@ const AdminDashboard = () => {
             doc.text('Detailed Ratings Log', 14, yPos);
             yPos += 5;
 
-            const ratingsLogData = filteredRatings.slice(0, 50).map((r) => [
+            const ratingsLogData = filteredRatings.slice(0, 75).map((r) => [
                 new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }),
-                (r.material_title || r.document_file || 'Unknown').length > 40
-                    ? (r.material_title || r.document_file || 'Unknown').substring(0, 40) + '...'
-                    : (r.material_title || r.document_file || 'Unknown'),
+                r.material_title || r.document_file || 'Unknown',
                 r.relevant === true ? 'Helpful' : 'Not Relevant',
-                r.message_comment && r.message_comment.trim() ? r.message_comment.substring(0, 25) + '...' : '—'
+                r.message_comment && r.message_comment.trim() ? r.message_comment : '—'
             ]);
 
             autoTable(doc, {
@@ -2408,15 +2415,17 @@ const AdminDashboard = () => {
                 head: [['Date', 'Material', 'Rating', 'Comment']],
                 body: ratingsLogData,
                 theme: 'striped',
-                headStyles: { fillColor: [168, 85, 247], textColor: 255, fontStyle: 'bold' },
+                headStyles: { fillColor: [168, 85, 247], textColor: 255, fontStyle: 'bold', fontSize: 10 },
                 alternateRowStyles: { fillColor: [245, 248, 250] },
                 margin: { left: 14, right: 14 },
                 columnStyles: {
-                    0: { cellWidth: 20, halign: 'center' },
-                    1: { cellWidth: 'auto' },
-                    2: { cellWidth: 25, halign: 'center', fontStyle: 'semibold' },
-                    3: { cellWidth: 40 }
-                }
+                    0: { cellWidth: 18, halign: 'center', fontSize: 8 },
+                    1: { cellWidth: 75, halign: 'left', fontSize: 8 },
+                    2: { cellWidth: 22, halign: 'center', fontStyle: 'semibold', fontSize: 8 },
+                    3: { cellWidth: 35, halign: 'left', fontSize: 8 }
+                },
+                bodyStyles: { cellPadding: 2, valign: 'top' },
+                columnWidth: 'wrap'
             });
 
             yPos = doc.lastAutoTable.finalY + 12;
@@ -2436,8 +2445,8 @@ const AdminDashboard = () => {
                 doc.text('Least Viewed Materials', 14, yPos);
                 yPos += 5;
 
-                const leastAccessedData = leastAccessedMaterials.slice(0, 10).map((m) => [
-                    m.title.length > 40 ? m.title.substring(0, 40) + '...' : m.title,
+                const leastAccessedData = leastAccessedMaterials.slice(0, 15).map((m) => [
+                    m.title || 'Unknown',
                     m.view_count || 0,
                     m.last_accessed ? new Date(m.last_accessed).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Never',
                     m.is_dormant ? 'Dormant' : m.view_count === 0 ? '0 Views' : m.view_count < 20 ? 'Low' : 'Moderate'
@@ -2448,15 +2457,17 @@ const AdminDashboard = () => {
                     head: [['Material', 'Views', 'Last Accessed', 'Status']],
                     body: leastAccessedData,
                     theme: 'striped',
-                    headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: 'bold' },
+                    headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: 'bold', fontSize: 10 },
                     alternateRowStyles: { fillColor: [245, 248, 250] },
                     margin: { left: 14, right: 14 },
                     columnStyles: {
-                        0: { cellWidth: 'auto' },
-                        1: { cellWidth: 20, halign: 'right' },
-                        2: { cellWidth: 25, halign: 'center' },
-                        3: { cellWidth: 25, halign: 'center', fontStyle: 'semibold' }
-                    }
+                        0: { cellWidth: 95, halign: 'left', fontSize: 9 },
+                        1: { cellWidth: 15, halign: 'right', fontSize: 9 },
+                        2: { cellWidth: 25, halign: 'center', fontSize: 9 },
+                        3: { cellWidth: 25, halign: 'center', fontStyle: 'semibold', fontSize: 9 }
+                    },
+                    bodyStyles: { cellPadding: 3, valign: 'middle' },
+                    columnWidth: 'wrap'
                 });
             }
 
