@@ -104,6 +104,8 @@ const AdminDashboard = () => {
     const citationActivityChartRef = useRef(null);
     const usersByCategoryChartRef = useRef(null);
     const ageDistributionChartRef = useRef(null);
+    const ratingDistributionChartRef = useRef(null);
+    const ratingTrendChartRef = useRef(null);
 
     // ---------- Feedback Export Dropdown ----------
     const [showFeedbackExportDropdown, setShowFeedbackExportDropdown] = useState(false);
@@ -1700,9 +1702,9 @@ const AdminDashboard = () => {
             doc.text('Most Viewed Theses', 14, yPos);
             yPos += 5;
             
-            const topThesesData = dashboardData.topTheses.slice(0, 8).map((thesis, i) => [
+            const topThesesData = dashboardData.topTheses.slice(0, 10).map((thesis, i) => [
                 `${i + 1}`,
-                thesis.title.length > 50 ? thesis.title.substring(0, 50) + '...' : thesis.title,
+                thesis.title || 'Unknown',
                 thesis.author || 'Unknown',
                 thesis.view_count.toLocaleString()
             ]);
@@ -1712,15 +1714,20 @@ const AdminDashboard = () => {
                 head: [['Rank', 'Title', 'Author', 'Views']],
                 body: topThesesData,
                 theme: 'striped',
-                headStyles: { fillColor: [30, 116, 188], textColor: 255, fontStyle: 'bold' },
+                headStyles: { fillColor: [30, 116, 188], textColor: 255, fontStyle: 'bold', fontSize: 10 },
                 alternateRowStyles: { fillColor: [245, 248, 250] },
                 margin: { left: 14, right: 14 },
                 columnStyles: {
-                    0: { cellWidth: 15, halign: 'center', fontStyle: 'bold' },
-                    1: { cellWidth: 'auto' },
-                    2: { cellWidth: 40 },
-                    3: { cellWidth: 25, halign: 'right', fontStyle: 'bold' }
-                }
+                    0: { cellWidth: 12, halign: 'center', fontStyle: 'bold', fontSize: 9 },
+                    1: { cellWidth: 85, halign: 'left', fontSize: 9 },
+                    2: { cellWidth: 35, halign: 'left', fontSize: 9 },
+                    3: { cellWidth: 18, halign: 'right', fontStyle: 'bold', fontSize: 9 }
+                },
+                didDrawPage: () => {
+                    yPos = doc.lastAutoTable.finalY + 12;
+                },
+                bodyStyles: { cellPadding: 3, valign: 'middle' },
+                columnWidth: 'wrap'
             });
             
             yPos = doc.lastAutoTable.finalY + 12;
@@ -1799,29 +1806,6 @@ const AdminDashboard = () => {
             doc.text('Age Distribution', 14, yPos);
             yPos += 5;
             
-            // Capture Age Distribution chart
-            if (ageDistributionChartRef.current) {
-                try {
-                    const canvas = await html2canvas(ageDistributionChartRef.current, {
-                        scale: 2,
-                        useCORS: true,
-                        backgroundColor: '#ffffff'
-                    });
-                    const imgData = canvas.toDataURL('image/png');
-                    const imgWidth = 80;
-                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                    
-                    if (yPos + imgHeight + 10 > pageHeight - 10) {
-                        doc.addPage();
-                        yPos = 20;
-                    }
-                    
-                    doc.addImage(imgData, 'PNG', 14, yPos, imgWidth, imgHeight);
-                    yPos += imgHeight + 8;
-                } catch (err) {
-                    console.warn('Failed to capture Age Distribution chart:', err);
-                }
-            }
             
             // Age Distribution table
             const ageData = dashboardData.ageDistribution.map(age => [
@@ -1861,8 +1845,8 @@ const AdminDashboard = () => {
             doc.text('Top Failed Queries', 14, yPos);
             yPos += 5;
             
-            const failedQueriesData = dashboardData.failedQueries.slice(0, 10).map(query => [
-                query.query.length > 60 ? query.query.substring(0, 60) + '...' : query.query,
+            const failedQueriesData = dashboardData.failedQueries.slice(0, 15).map(query => [
+                query.query || 'Unknown',
                 query.count.toLocaleString()
             ]);
             
@@ -1871,13 +1855,15 @@ const AdminDashboard = () => {
                 head: [['Query', 'Count']],
                 body: failedQueriesData,
                 theme: 'striped',
-                headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: 'bold' },
+                headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: 'bold', fontSize: 10 },
                 alternateRowStyles: { fillColor: [254, 242, 242] },
                 margin: { left: 14, right: 14 },
                 columnStyles: {
-                    0: { cellWidth: 'auto' },
-                    1: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }
-                }
+                    0: { cellWidth: 125, halign: 'left', fontSize: 9 },
+                    1: { cellWidth: 25, halign: 'right', fontStyle: 'bold', fontSize: 9 }
+                },
+                bodyStyles: { cellPadding: 3, valign: 'middle' },
+                columnWidth: 'wrap'
             });
             
             yPos = doc.lastAutoTable.finalY + 12;
@@ -2135,25 +2121,32 @@ const AdminDashboard = () => {
                 return;
             }
 
+            showToast('Generating PDF report...', 'info');
+
+            // Dynamically import required libraries
             const { jsPDF } = await import('jspdf');
-            const doc = new jsPDF();
-            let yPos = 20;
+            const autoTable = (await import('jspdf-autotable')).default;
+            const html2canvas = (await import('html2canvas')).default;
+
+            const doc = new jsPDF('p', 'mm', 'a4');
             const pageWidth = doc.internal.pageSize.width;
+            const pageHeight = doc.internal.pageSize.height;
+            let yPos = 20;
 
             // Determine the date range based on the current filter
-            let filterDescription = '';
+            let filterText = '';
             let fromDateStr = '', toDateStr = '';
             let dateFilterApplied = false;
-            
+
             if (ratingsDateFilterType === 'Year') {
                 dateFilterApplied = true;
-                filterDescription = `Year ${ratingsSelectedYear}`;
+                filterText = `Year ${ratingsSelectedYear}`;
                 fromDateStr = `${ratingsSelectedYear}-01-01`;
                 toDateStr = `${ratingsSelectedYear}-12-31`;
             } else if (ratingsDateFilterType === 'Month') {
                 dateFilterApplied = true;
                 const monthName = new Date(ratingsSelectedMonthYear, ratingsSelectedMonth - 1).toLocaleString('default', { month: 'long' });
-                filterDescription = `${monthName} ${ratingsSelectedMonthYear}`;
+                filterText = `${monthName} ${ratingsSelectedMonthYear}`;
                 const year = ratingsSelectedMonthYear;
                 const month = String(ratingsSelectedMonth).padStart(2, '0');
                 const daysInMonth = new Date(year, ratingsSelectedMonth, 0).getDate();
@@ -2164,46 +2157,27 @@ const AdminDashboard = () => {
                 const to = new Date();
                 const from = new Date();
                 from.setDate(to.getDate() - 7);
-                filterDescription = `Last 7 days (${from.toLocaleDateString()} to ${to.toLocaleDateString()})`;
+                filterText = `Last 7 days`;
                 fromDateStr = from.toISOString().slice(0, 10);
                 toDateStr = to.toISOString().slice(0, 10);
             } else if (ratingsDateFilterType === 'Custom range' && ratingsCustomFrom && ratingsCustomTo) {
                 dateFilterApplied = true;
-                filterDescription = `${ratingsCustomFrom} to ${ratingsCustomTo}`;
+                filterText = `${ratingsCustomFrom} to ${ratingsCustomTo}`;
                 fromDateStr = ratingsCustomFrom;
                 toDateStr = ratingsCustomTo;
             } else {
-                filterDescription = 'All time';
+                filterText = 'All Time';
             }
 
-            showToast('Generating PDF report...', 'info');
+            const exportDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-            // Fetch least accessed materials and apply the same date filter
-            let allLeastAccessed = [];
-            try {
-                const response = await fetch(`${API_BASE_URL}/dashboard/least-browsed/?limit=1000`, {
-                    headers: apiHeaders(true)
-                });
-                if (response.ok) {
-                    allLeastAccessed = await response.json();
-                    
-                    // IMPORTANT: Filter least accessed materials by the same date range applied to ratings
-                    if (dateFilterApplied && fromDateStr && toDateStr) {
-                        const fromDate = new Date(fromDateStr);
-                        const toDate = new Date(toDateStr);
-                        toDate.setHours(23, 59, 59, 999);
-                        
-                        allLeastAccessed = allLeastAccessed.filter(m => {
-                            if (!m.last_accessed) return false; // exclude materials with no access date
-                            const lastAccessDate = new Date(m.last_accessed);
-                            return lastAccessDate >= fromDate && lastAccessDate <= toDate;
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error('Error fetching least accessed materials for PDF:', error);
-            }
+            // ============================================
+            // HEADER — Title and Subtitle
+            // ============================================
+            doc.setFillColor(30, 116, 188); // #1E74BC
+            doc.rect(0, 0, pageWidth, 25, 'F');
 
+<<<<<<< HEAD
             // Filter to only dormant materials for PDF
             const dormantMaterials = allLeastAccessed ? allLeastAccessed.filter(m => m.is_dormant) : [];
             
@@ -2275,6 +2249,256 @@ const AdminDashboard = () => {
             // Save the PDF
             doc.save(`LitPathAI_DormantMaterials_${new Date().toISOString().slice(0, 10)}.pdf`);
             showToast('Dormant materials exported to PDF successfully!', 'success');
+=======
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Content Quality & Material Ratings Report', pageWidth / 2, 12, { align: 'center' });
+
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${filterText} | Exported: ${exportDate}`, pageWidth / 2, 20, { align: 'center' });
+
+            yPos = 32;
+
+            // ============================================
+            // SECTION 1: SUMMARY STATISTICS — Clean labeled table
+            // ============================================
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(30, 116, 188);
+            doc.text('Summary Statistics', 14, yPos);
+            yPos += 5;
+
+            const helpfulCount = filteredRatings.filter(r => r.relevant === true).length;
+            const notRelevantCount = filteredRatings.filter(r => r.relevant === false).length;
+            const relevanceScore = filteredRatings.length > 0 ? ((helpfulCount / filteredRatings.length) * 100).toFixed(1) : 0;
+
+            const summaryStatsData = [
+                ['Total Ratings', filteredRatings.length.toLocaleString()],
+                ['Helpful', `${helpfulCount} (${relevanceScore}%)`],
+                ['Not Relevant', `${notRelevantCount} (${(100 - relevanceScore).toFixed(1)}%)`],
+                ['Relevance Score', `${relevanceScore}%`],
+                ['Dormant Materials', dormantCount.toLocaleString()]
+            ];
+
+            autoTable(doc, {
+                startY: yPos,
+                head: [['Metric', 'Value']],
+                body: summaryStatsData,
+                theme: 'striped',
+                headStyles: { fillColor: [30, 116, 188], textColor: 255, fontStyle: 'bold' },
+                alternateRowStyles: { fillColor: [245, 248, 250] },
+                margin: { left: 14, right: 14 },
+                columnStyles: {
+                    0: { cellWidth: 70, fontStyle: 'semibold' },
+                    1: { cellWidth: 60, fontStyle: 'bold' }
+                }
+            });
+
+            yPos = doc.lastAutoTable.finalY + 12;
+
+            // ============================================
+            // SECTION 2: RATING DISTRIBUTION CHART
+            // ============================================
+            if (doc.lastAutoTable.finalY > pageHeight - 80) {
+                doc.addPage();
+                yPos = 20;
+            }
+
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(30, 116, 188);
+            doc.text('Rating Distribution', 14, yPos);
+            yPos += 5;
+
+            // Rating Distribution breakdown table
+            const ratingDistData = [
+                ['Helpful', `${helpfulCount}`, `${relevanceScore}%`],
+                ['Not Relevant', `${notRelevantCount}`, `${(100 - relevanceScore).toFixed(1)}%`]
+            ];
+
+            autoTable(doc, {
+                startY: yPos,
+                head: [['Rating Type', 'Count', 'Percentage']],
+                body: ratingDistData,
+                theme: 'striped',
+                headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
+                alternateRowStyles: { fillColor: [245, 248, 250] },
+                margin: { left: 14, right: 14 },
+                columnStyles: {
+                    0: { cellWidth: 'auto', fontStyle: 'semibold' },
+                    1: { cellWidth: 30, halign: 'right' },
+                    2: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }
+                }
+            });
+
+            yPos = doc.lastAutoTable.finalY + 12;
+
+            // ============================================
+            // SECTION 3: RATING TREND CHART
+            // ============================================
+            if (doc.lastAutoTable.finalY > pageHeight - 80) {
+                doc.addPage();
+                yPos = 20;
+            }
+
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(30, 116, 188);
+            doc.text('Rating Trend Over Time', 14, yPos);
+            yPos += 5;
+
+            // Capture Rating Trend chart
+            if (ratingTrendChartRef.current) {
+                try {
+                    const canvas = await html2canvas(ratingTrendChartRef.current, {
+                        scale: 2,
+                        useCORS: true,
+                        backgroundColor: '#ffffff'
+                    });
+                    const imgData = canvas.toDataURL('image/png');
+                    const imgWidth = 170;
+                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                    if (yPos + imgHeight + 10 > pageHeight - 10) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+
+                    doc.addImage(imgData, 'PNG', 14, yPos, imgWidth, imgHeight);
+                    yPos += imgHeight + 8;
+                } catch (err) {
+                    console.warn('Failed to capture Rating Trend chart:', err);
+                }
+            }
+
+            // ============================================
+            // SECTION 4: TOP RATED MATERIALS — Table
+            // ============================================
+            if (yPos > pageHeight - 60) {
+                doc.addPage();
+                yPos = 20;
+            }
+
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(30, 116, 188);
+            doc.text('Top Rated Materials', 14, yPos);
+            yPos += 5;
+
+            const topMaterials = getTopMaterials(filteredRatings).slice(0, 10);
+            const topMaterialsData = topMaterials.map((item, i) => [
+                `${i + 1}`,
+                item.title || 'Unknown',
+                item.count.toLocaleString()
+            ]);
+
+            autoTable(doc, {
+                startY: yPos,
+                head: [['Rank', 'Material Title', 'Helpful Votes']],
+                body: topMaterialsData,
+                theme: 'striped',
+                headStyles: { fillColor: [34, 197, 94], textColor: 255, fontStyle: 'bold', fontSize: 10 },
+                alternateRowStyles: { fillColor: [245, 248, 250] },
+                margin: { left: 14, right: 14 },
+                columnStyles: {
+                    0: { cellWidth: 12, halign: 'center', fontStyle: 'bold', fontSize: 9 },
+                    1: { cellWidth: 110, halign: 'left', fontSize: 9 },
+                    2: { cellWidth: 28, halign: 'right', fontStyle: 'bold', fontSize: 9 }
+                },
+                bodyStyles: { cellPadding: 3, valign: 'middle' },
+                columnWidth: 'wrap'
+            });
+
+            yPos = doc.lastAutoTable.finalY + 12;
+
+            // ============================================
+            // SECTION 5: DETAILED RATINGS LOG — Table
+            // ============================================
+            if (yPos > pageHeight - 60) {
+                doc.addPage();
+                yPos = 20;
+            }
+
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(30, 116, 188);
+            doc.text('Detailed Ratings Log', 14, yPos);
+            yPos += 5;
+
+            const ratingsLogData = filteredRatings.slice(0, 75).map((r) => [
+                new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }),
+                r.material_title || r.document_file || 'Unknown',
+                r.relevant === true ? 'Helpful' : 'Not Relevant',
+                r.message_comment && r.message_comment.trim() ? r.message_comment : '—'
+            ]);
+
+            autoTable(doc, {
+                startY: yPos,
+                head: [['Date', 'Material', 'Rating', 'Comment']],
+                body: ratingsLogData,
+                theme: 'striped',
+                headStyles: { fillColor: [168, 85, 247], textColor: 255, fontStyle: 'bold', fontSize: 10 },
+                alternateRowStyles: { fillColor: [245, 248, 250] },
+                margin: { left: 14, right: 14 },
+                columnStyles: {
+                    0: { cellWidth: 18, halign: 'center', fontSize: 8 },
+                    1: { cellWidth: 75, halign: 'left', fontSize: 8 },
+                    2: { cellWidth: 22, halign: 'center', fontStyle: 'semibold', fontSize: 8 },
+                    3: { cellWidth: 35, halign: 'left', fontSize: 8 }
+                },
+                bodyStyles: { cellPadding: 2, valign: 'top' },
+                columnWidth: 'wrap'
+            });
+
+            yPos = doc.lastAutoTable.finalY + 12;
+
+            // ============================================
+            // SECTION 6: LEAST ACCESSED MATERIALS (if any)
+            // ============================================
+            if (leastAccessedMaterials && leastAccessedMaterials.length > 0) {
+                if (yPos > pageHeight - 60) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(239, 68, 68);
+                doc.text('Least Viewed Materials', 14, yPos);
+                yPos += 5;
+
+                const leastAccessedData = leastAccessedMaterials.slice(0, 15).map((m) => [
+                    m.title || 'Unknown',
+                    m.view_count || 0,
+                    m.last_accessed ? new Date(m.last_accessed).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Never',
+                    m.is_dormant ? 'Dormant' : m.view_count === 0 ? '0 Views' : m.view_count < 20 ? 'Low' : 'Moderate'
+                ]);
+
+                autoTable(doc, {
+                    startY: yPos,
+                    head: [['Material', 'Views', 'Last Accessed', 'Status']],
+                    body: leastAccessedData,
+                    theme: 'striped',
+                    headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: 'bold', fontSize: 10 },
+                    alternateRowStyles: { fillColor: [245, 248, 250] },
+                    margin: { left: 14, right: 14 },
+                    columnStyles: {
+                        0: { cellWidth: 95, halign: 'left', fontSize: 9 },
+                        1: { cellWidth: 15, halign: 'right', fontSize: 9 },
+                        2: { cellWidth: 25, halign: 'center', fontSize: 9 },
+                        3: { cellWidth: 25, halign: 'center', fontStyle: 'semibold', fontSize: 9 }
+                    },
+                    bodyStyles: { cellPadding: 3, valign: 'middle' },
+                    columnWidth: 'wrap'
+                });
+            }
+
+            // Save the PDF
+            doc.save(`LitPathAI_MaterialRatings_${new Date().toISOString().slice(0, 10)}.pdf`);
+            showToast('Material Ratings exported to PDF successfully!', 'success');
+>>>>>>> 6572193dbb7829dbbac5fc59ceaa5df46aca3c22
         } catch (error) {
             console.error("Ratings PDF export failed:", error);
             showToast('Failed to generate PDF export. Please try again.', 'error');
@@ -4700,7 +4924,7 @@ const AdminDashboard = () => {
                                 <div className="flex flex-col gap-2 h-full min-h-[300px]">
 
                                     {/* Top half: Rating Distribution */}
-                                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-1">
+                                    <div ref={ratingDistributionChartRef} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-1">
                                         <div className="flex items-center gap-1.5 mb-3">
                                             <h3 className="font-bold text-gray-700 text-xs uppercase tracking-wide flex items-center gap-2">
                                                 <BarChart3 size={16} className="text-blue-600" />
@@ -4754,7 +4978,7 @@ const AdminDashboard = () => {
                                     </div>
 
                                     {/* Rating Trend Chart */}
-                                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-1">
+                                    <div ref={ratingTrendChartRef} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-1">
                                         <div className="flex items-center justify-between mb-3 flex-wrap">
                                             <div className="flex items-center gap-1.5">
                                                 <h3 className="font-bold text-gray-700 text-xs uppercase tracking-wide flex items-center gap-2">
