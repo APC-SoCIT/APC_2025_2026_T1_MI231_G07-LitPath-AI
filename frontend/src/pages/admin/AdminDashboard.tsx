@@ -1466,7 +1466,7 @@ const AdminDashboard = () => {
         ratingsDateFilterType === 'Custom range' ? 'previous period' : '';
 
     
-    // ---------- Overview Export Data to CSV ----------
+    // ---------- Usage Analytics Export Data to CSV ----------
     const handleExportCSV = () => {
         try {
             // 1. Generate a descriptive subtitle for the export
@@ -1573,7 +1573,7 @@ const AdminDashboard = () => {
         }
     };
 
-    // ---------- Overview Export Data to PDF ----------
+    // ---------- Usage Analytics Export Data to PDF ----------
     const handleExportPDF = async () => {
         try {
             showToast('Generating PDF report...', 'info');
@@ -2074,85 +2074,36 @@ const AdminDashboard = () => {
             const exportDate = new Date().toLocaleDateString();
 
             // --- SECTION 1: REPORT HEADER ---
-            rows.push(["LITPATH AI - CONTENT QUALITY REPORT"]);
+            rows.push(["LITPATH AI - DORMANT MATERIALS REPORT"]);
             rows.push(["Export Date", exportDate]);
             rows.push(["Filter Period", filterDescription]);
-            rows.push(["Total Ratings (filtered)", filteredRatings.length]);
-
-            // Feature 13.0: Count dormant materials using 30-day rule
-            const dormantMaterialsCount = allLeastAccessed.filter(m => m.is_dormant).length;
-            const recentlyUploadedCount = allLeastAccessed.filter(m => m.is_recently_uploaded && !m.is_dormant).length;
-            rows.push(["Dormant Materials in Period (30+ days inactive)", dormantMaterialsCount]);
-            rows.push(["Recently Uploaded Materials in Period", recentlyUploadedCount]);
+            
+            // Filter to only dormant materials
+            const dormantMaterials = allLeastAccessed ? allLeastAccessed.filter(m => m.is_dormant) : [];
+            rows.push(["Total Dormant Materials (filtered)", dormantMaterials.length]);
             rows.push([]); // empty line
 
-            // --- SECTION 2: RATINGS LOG ---
-            rows.push(["RATINGS LOG"]);
-            rows.push(["Date", "Material Title", "Rating", "Score", "Comment"]);
+            // --- SECTION 2: DORMANT MATERIALS ONLY ---
+            rows.push(["DORMANT MATERIALS"]);
+            
+            if (dormantMaterials && dormantMaterials.length > 0) {
+                rows.push(["Material Title", "Year", "Uploaded", "Last Accessed", "Total Views"]);
 
-            filteredRatings.forEach(r => {
-                const date = new Date(r.created_at);
-                const dateStr = !isNaN(date) ? date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '-';
-                const title = r.material_title || r.document_file || 'Unknown';
-                const rating = r.relevant === true ? 'Helpful' : 'Not Relevant';
-                const score = r.relevant === true ? 1 : 0;
-                const comment = r.message_comment && r.message_comment.trim() !== '' ? r.message_comment : '-';
-
-                rows.push([
-                    escape(dateStr),
-                    escape(title),
-                    escape(rating),
-                    score,
-                    escape(comment)
-                ]);
-            });
-
-            rows.push([]);
-            rows.push([]);
-
-            // --- SECTION 3: LEAST VIEWED MATERIALS (Feature 13.0) - FILTERED BY SAME DATE RANGE ---
-            rows.push(["--- PART 2: LEAST VIEWED MATERIALS (Feature 13.0) - FILTERED BY SAME PERIOD ---"]);
-
-            if (allLeastAccessed && allLeastAccessed.length > 0) {
-                rows.push(["Material Title", "Year", "Uploaded", "Last Accessed", "Total Views", "Status", "Dormancy"]);
-
-                allLeastAccessed.forEach(m => {
+                dormantMaterials.forEach(m => {
                     const uploaded = m.created_at ? new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
                     const lastAccess = m.last_accessed ? new Date(m.last_accessed).toLocaleDateString() : 'Never';
                     const views = m.view_count || 0;
-                    
-                    // Dormancy classification (Feature 13.0)
-                    let dormancyStatus = "Active";
-                    if (m.is_recently_uploaded && !m.is_dormant) {
-                        dormancyStatus = "Recently Uploaded";
-                    } else if (m.is_dormant) {
-                        dormancyStatus = "Dormant";
-                    }
-                    
-                    // Engagement classification
-                    let engagementStatus = "Active"; // Default for high views
-                    if (views === 0) {
-                        engagementStatus = "0 Views";
-                    } else if (views < 20) {
-                        engagementStatus = "Low Engagement";
-                    } else if (views < 100) {
-                        engagementStatus = "Moderate Engagement";
-                    } else {
-                        engagementStatus = "High Engagement";
-                    }
 
                     rows.push([
                         escape(m.title || m.file || 'Unknown'),
                         escape(m.year || '-'),
                         escape(uploaded),
                         escape(lastAccess),
-                        views,
-                        escape(engagementStatus),
-                        escape(dormancyStatus)
+                        views
                     ]);
                 });
             } else {
-                rows.push(["Note: No least viewed materials found in the selected period."]);
+                rows.push(["Note: No dormant materials found in the selected period."]);
             }
 
             // Convert rows to CSV string
@@ -2163,13 +2114,13 @@ const AdminDashboard = () => {
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `LitPathAI_MaterialReport_${getLocalDateString()}.csv`;
+            link.download = `LitPathAI_DormantMaterials_${getLocalDateString()}.csv`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
 
-            showToast('Report exported successfully!', 'success');
+            showToast('Dormant materials exported successfully!', 'success');
 
         } catch (error) {
             console.error("Export generation failed:", error);
@@ -2253,100 +2204,77 @@ const AdminDashboard = () => {
                 console.error('Error fetching least accessed materials for PDF:', error);
             }
 
+            // Filter to only dormant materials for PDF
+            const dormantMaterials = allLeastAccessed ? allLeastAccessed.filter(m => m.is_dormant) : [];
+            
+            if (dormantMaterials.length === 0) {
+                showToast('No dormant materials found to export', 'error');
+                return;
+            }
+
             // Title
             doc.setFontSize(18);
-            doc.text("LITPATH AI - CONTENT QUALITY REPORT", pageWidth / 2, yPos, { align: 'center' });
+            doc.text("LITPATH AI - DORMANT MATERIALS REPORT", pageWidth / 2, yPos, { align: 'center' });
             yPos += 10;
 
             // Report header
             doc.setFontSize(12);
             doc.text(`Filter Period: ${filterDescription}`, 20, yPos);
             yPos += 6;
-            doc.text(`Total Ratings: ${filteredRatings.length}`, 20, yPos);
+            doc.text(`Total Dormant Materials: ${dormantMaterials.length}`, 20, yPos);
             yPos += 6;
             doc.text(`Exported On: ${new Date().toLocaleString()}`, 20, yPos);
             yPos += 12;
 
-            // Ratings List
+            // Dormant Materials List
             doc.setFontSize(14);
-            doc.text("RATINGS LOG", 20, yPos);
+            doc.text("DORMANT MATERIALS", 20, yPos);
+            yPos += 6;
+            doc.setFontSize(10);
+            doc.text(`Note: Dormant = Not accessed 30+ days OR never accessed (uploaded 30+ days ago)`, 20, yPos);
             yPos += 8;
             doc.setFontSize(10);
-
-            filteredRatings.forEach((r, index) => {
-                if (yPos > 250) {
+            
+            let materialIndex = 1;
+            dormantMaterials.forEach((m) => {
+                // Check if we need a new page before adding title
+                if (yPos > 260) {
                     doc.addPage();
                     yPos = 20;
                 }
-
-                const date = new Date(r.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-                const title = r.material_title || r.document_file || 'Unknown';
-                const rating = r.relevant === true ? 'Helpful' : 'Not Relevant';
-
-                doc.text(`Entry ${index + 1}:`, 20, yPos);
-                yPos += 5;
-                doc.text(`Date: ${date}`, 25, yPos);
-                yPos += 5;
-                doc.text(`Material: ${title.substring(0, 60)}${title.length > 60 ? '...' : ''}`, 25, yPos);
-                yPos += 5;
-                doc.text(`Rating: ${rating}`, 25, yPos);
-                yPos += 5;
-
-                const comment = r.message_comment && r.message_comment.trim() !== '' ? r.message_comment : '-';
-                const commentLines = doc.splitTextToSize(`Comment: ${comment}`, 160);
-                commentLines.forEach(line => {
-                    if (yPos > 250) {
+                
+                const lastAccess = m.last_accessed ? new Date(m.last_accessed).toLocaleDateString() : 'Never';
+                const views = m.view_count || 0;
+                const uploaded = m.created_at ? new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
+                
+                // Split title into multiple lines to fit within page width (max width ~170mm from position 20)
+                const titleWithNumber = `${materialIndex}. ${m.title || 'Unknown'}`;
+                const titleLines = doc.splitTextToSize(titleWithNumber, 170);
+                
+                // Print wrapped title
+                titleLines.forEach(line => {
+                    if (yPos > 260) {
                         doc.addPage();
                         yPos = 20;
                     }
-                    doc.text(line, 25, yPos);
+                    doc.text(line, 20, yPos);
                     yPos += 5;
                 });
-
-                yPos += 5;
+                
+                // Print metadata
+                if (yPos > 260) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                doc.text(`Uploaded: ${uploaded} | Last Accessed: ${lastAccess} | Views: ${views}`, 25, yPos);
+                yPos += 7;
+                
+                materialIndex++;
             });
 
-            // Add least viewed materials section if data exists after filtering (Feature 13.0)
-            if (allLeastAccessed && allLeastAccessed.length > 0) {
-                doc.addPage();
-                yPos = 20;
-                
-                doc.setFontSize(14);
-                doc.text("LEAST VIEWED MATERIALS (Feature 13.0)", 20, yPos);
-                yPos += 6;
-                doc.setFontSize(10);
-                doc.text(`Filtered by period: ${filterDescription} | Dormant = Not accessed 30+ days OR never accessed (uploaded 30+ days ago)`, 20, yPos);
-                yPos += 8;
-                
-                allLeastAccessed.forEach((m, index) => {
-                    if (yPos > 250) {
-                        doc.addPage();
-                        yPos = 20;
-                    }
-                    
-                    const lastAccess = m.last_accessed ? new Date(m.last_accessed).toLocaleDateString() : 'Never';
-                    const views = m.view_count || 0;
-                    let status = "Active";
-                    if (views === 0) {
-                        status = "DORMANT (0 Views)";
-                    } else if (views < 20) {
-                        status = "Low Engagement";
-                    } else if (views < 100) {
-                        status = "Moderate Engagement";
-                    } else {
-                        status = "High Engagement";
-                    }
-                    
-                    doc.text(`${index + 1}. ${m.title || 'Unknown'}`, 20, yPos);
-                    yPos += 5;
-                    doc.text(`Last Accessed: ${lastAccess} | Views: ${views} | Status: ${status}`, 25, yPos);
-                    yPos += 5;
-                });
-            }
-
             // Save the PDF
-            doc.save(`LitPathAI_MaterialReport_${new Date().toISOString().slice(0, 10)}.pdf`);
-            showToast('Ratings exported to PDF successfully!', 'success');
+            doc.save(`LitPathAI_DormantMaterials_${new Date().toISOString().slice(0, 10)}.pdf`);
+            showToast('Dormant materials exported to PDF successfully!', 'success');
         } catch (error) {
             console.error("Ratings PDF export failed:", error);
             showToast('Failed to generate PDF export. Please try again.', 'error');
@@ -4698,7 +4626,7 @@ const AdminDashboard = () => {
                                     </div>
                                 </div>
 
-                                {/* 2. Least Viewed Materials (Feature 13.0) */}
+                                {/* 2. Least Viewed Materials */}
                                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col h-full">
                                     <div className="flex items-center gap-1.5 mb-2 border-b border-gray-100 pb-3">
                                         <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
