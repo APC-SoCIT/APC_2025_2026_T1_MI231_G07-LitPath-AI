@@ -858,9 +858,15 @@ def csm_feedback_view(request):
     """
     if request.method == 'GET':
         # Check if user is staff or admin for GET requests
-        if not (hasattr(request, 'authenticated_user') and request.authenticated_user and 
-                request.authenticated_user.role in [UserRole.STAFF, UserRole.ADMIN]):
-            return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+        user, error_response = get_authenticated_user(request)
+        if error_response:
+            return error_response
+        
+        if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+            return Response(
+                {'error': 'Unauthorized - admin access required'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         
         # Optional: filter by user_id for user-specific feedback
         user_id = request.query_params.get('user_id')
