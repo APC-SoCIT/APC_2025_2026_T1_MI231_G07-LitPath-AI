@@ -5,7 +5,7 @@ from rest_framework.decorators import api_view
 from django.http import StreamingHttpResponse
 from .rag_service import RAGService
 from .serializers import CSMFeedbackSerializer
-from .models import CSMFeedback, CitationCopy, Material, MaterialView, ResearchHistory, SystemSettings
+from .models import CSMFeedback, CitationCopy, Material, MaterialView, ResearchHistory, SystemSettings, UserRole
 from .models_password_reset import PasswordResetToken
 from .password_validation import validate_password_strength
 import secrets
@@ -127,9 +127,10 @@ def insert_to_supabase_general_feedback(data):
             INSERT INTO general_feedback (
                 user_id, session_id, consent_given, client_type, 
                 date, sex, age, region, category, litpath_rating,
-                research_interests, missing_content, message_comment
+                research_interests, missing_content, message_comment,
+                school_level, school_name, company
             ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
             )
         """, (
             data.get('user_id'),
@@ -144,7 +145,10 @@ def insert_to_supabase_general_feedback(data):
             data.get('litpath_rating'),
             data.get('research_interests'),
             data.get('missing_content'),
-            data.get('message_comment')
+            data.get('message_comment'),
+            data.get('school_level'),
+            data.get('school_name'),
+            data.get('company')
         ))
         
         conn.commit()
@@ -847,13 +851,17 @@ def feedback_detail(request, pk):
 
 # ============= CSM Feedback Views =============
 @api_view(['GET', 'POST'])
-@require_staff_or_admin
 def csm_feedback_view(request):
     """
-    GET: List all CSM feedback (for admin analytics)
-    POST: Submit new CSM feedback
+    GET: List all CSM feedback (for admin analytics) - staff/admin only
+    POST: Submit new CSM feedback - open to all users
     """
     if request.method == 'GET':
+        # Check if user is staff or admin for GET requests
+        if not (hasattr(request, 'authenticated_user') and request.authenticated_user and 
+                request.authenticated_user.role in [UserRole.STAFF, UserRole.ADMIN]):
+            return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+        
         # Optional: filter by user_id for user-specific feedback
         user_id = request.query_params.get('user_id')
         if user_id:

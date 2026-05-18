@@ -64,6 +64,7 @@ class CSMFeedbackSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user_id', 'session_id',
             'consent_given', 'client_type', 'date', 'sex', 'age', 'region', 'category',
+            'school_level', 'school_name', 'company',
             'litpath_rating', 'research_interests', 'missing_content', 'message_comment',
             'created_at',
             # NEW Admin Fields

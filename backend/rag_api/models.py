@@ -634,6 +634,7 @@ class CSMFeedback(models.Model):
 
     # Client Type choices (unified with Category)
     CLIENT_TYPE_CHOICES = [
+        ('Citizen', 'Citizen'),
         ('Student', 'Student'),
         ('DOST Employee', 'DOST Employee'),
         ('Other Government Employee', 'Other Government Employee'),
@@ -684,6 +685,7 @@ class CSMFeedback(models.Model):
         ('R11', '[R11] Davao Region'),
         ('R12', '[R12] SOCCSKSARGEN Region'),
         ('R13', '[R13] Caraga Administrative Region'),
+        ('R18', '[R18] Negros Island Region (NIR)'),
         ('BARMM', '[BARMM] Bangsamoro Autonomous Region in Muslim Mindanao'),
         ('N/A', '[N/A] Not Applicable (Overseas)'),
     ]
@@ -722,6 +724,14 @@ class CSMFeedback(models.Model):
     age = models.CharField(max_length=50, choices=AGE_CHOICES)
     region = models.CharField(max_length=50, choices=REGION_CHOICES)
     category = models.CharField(max_length=100, choices=CATEGORY_CHOICES, blank=True, null=True)
+    
+    # Conditional fields for client type
+    school_level = models.CharField(max_length=100, blank=True, null=True, 
+        help_text="For Student client type")
+    school_name = models.CharField(max_length=255, blank=True, null=True,
+        help_text="For Student client type")
+    company = models.CharField(max_length=255, blank=True, null=True,
+        help_text="For Citizen client type")
     
     # III. Feedback & Evaluation
     litpath_rating = models.IntegerField(choices=RATING_CHOICES, blank=True, null=True)
