@@ -1779,29 +1779,6 @@ const AdminDashboard = () => {
             doc.text('Users by Category', 14, yPos);
             yPos += 5;
             
-            // Capture Users by Category chart
-            if (usersByCategoryChartRef.current) {
-                try {
-                    const canvas = await html2canvas(usersByCategoryChartRef.current, {
-                        scale: 2,
-                        useCORS: true,
-                        backgroundColor: '#ffffff'
-                    });
-                    const imgData = canvas.toDataURL('image/png');
-                    const imgWidth = 80;
-                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                    
-                    if (yPos + imgHeight + 10 > pageHeight - 10) {
-                        doc.addPage();
-                        yPos = 20;
-                    }
-                    
-                    doc.addImage(imgData, 'PNG', 14, yPos, imgWidth, imgHeight);
-                    yPos += imgHeight + 8;
-                } catch (err) {
-                    console.warn('Failed to capture Users by Category chart:', err);
-                }
-            }
             
             // Users by Category table (2 columns: Category and Percentage)
             const categoryData = dashboardData.usageByCategory.map(cat => [
