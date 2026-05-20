@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { API_BASE_URL, apiHeaders } from '../../services/api';
 import { getPasswordRequirementChecks, validatePasswordStrength } from '../../lib/passwordValidation';
+import PasswordRequirements from '../../components/PasswordRequirements';
 import { getRoleLabel } from '../../lib/roleLabels';
 
 const roleOptions = [
@@ -184,12 +185,13 @@ const getBadgeClasses = (role, isActive) => {
 
 const formatChoiceLabel = (value) => value ? value.replace(/_/g, ' ') : 'Unknown';
 
+const ACCOUNT_PAGE_SIZE = 8;
+
 const ITAdminDashboard = () => {
     const { user, logout } = useAuth();
 
     const tabs = [
         { key: 'accounts', label: 'Account Management' },
-        { key: 'database', label: 'Manage Database Structure & Backups' },
         { key: 'security', label: 'System Security' },
         { key: 'system', label: 'System Settings' },
     ];
@@ -207,6 +209,7 @@ const ITAdminDashboard = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [roleFilter, setRoleFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [accountPage, setAccountPage] = useState(1);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAccount, setEditingAccount] = useState(null);
     const [form, setForm] = useState(emptyForm);
@@ -520,6 +523,23 @@ const ITAdminDashboard = () => {
             return matchesSearch && matchesRole && matchesStatus;
         });
     }, [accounts, roleFilter, searchTerm, statusFilter]);
+
+    const accountTotalPages = Math.max(1, Math.ceil(filteredAccounts.length / ACCOUNT_PAGE_SIZE));
+
+    const paginatedAccounts = useMemo(() => {
+        const startIndex = (accountPage - 1) * ACCOUNT_PAGE_SIZE;
+        return filteredAccounts.slice(startIndex, startIndex + ACCOUNT_PAGE_SIZE);
+    }, [accountPage, filteredAccounts]);
+
+    useEffect(() => {
+        setAccountPage(1);
+    }, [activeTab, roleFilter, searchTerm, statusFilter]);
+
+    useEffect(() => {
+        if (accountPage > accountTotalPages) {
+            setAccountPage(accountTotalPages);
+        }
+    }, [accountPage, accountTotalPages]);
 
     const metrics = useMemo(() => {
         const total = accounts.length;
@@ -1260,7 +1280,8 @@ const ITAdminDashboard = () => {
                                             </p>
                                         </div>
                                     ) : (
-                                        <div className="overflow-x-auto">
+                                        <>
+                                            <div className="overflow-x-auto">
                                             <table className="min-w-full divide-y divide-slate-200">
                                                 <thead className="bg-slate-50 text-left text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
                                                     <tr>
@@ -1273,7 +1294,7 @@ const ITAdminDashboard = () => {
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-100 bg-white">
-                                                    {filteredAccounts.map((account) => {
+                                                    {paginatedAccounts.map((account) => {
                                                         const isSelf = String(user?.id) === String(account.id);
                                                         return (
                                                             <tr key={account.id} className="transition hover:bg-slate-50/70">
@@ -1333,7 +1354,36 @@ const ITAdminDashboard = () => {
                                                     })}
                                                 </tbody>
                                             </table>
-                                        </div>
+                                            </div>
+                                            {filteredAccounts.length > ACCOUNT_PAGE_SIZE ? (
+                                                <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                                    <p className="text-sm text-slate-600">
+                                                        Showing {((accountPage - 1) * ACCOUNT_PAGE_SIZE) + 1}-{Math.min(accountPage * ACCOUNT_PAGE_SIZE, filteredAccounts.length)} of {filteredAccounts.length} accounts
+                                                    </p>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setAccountPage((current) => Math.max(1, current - 1))}
+                                                            disabled={accountPage === 1}
+                                                            className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        >
+                                                            Previous
+                                                        </button>
+                                                        <span className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700">
+                                                            Page {accountPage} of {accountTotalPages}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setAccountPage((current) => Math.min(accountTotalPages, current + 1))}
+                                                            disabled={accountPage === accountTotalPages}
+                                                            className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        >
+                                                            Next
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : null}
+                                        </>
                                     )}
                                 </div>
                             </>
@@ -2765,19 +2815,9 @@ const ITAdminDashboard = () => {
                                 </label>
                             </div>
 
-                            {form.password ? (
-                                <div className="md:col-span-2 rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                                    <p className="text-sm font-semibold text-slate-700">Password requirements</p>
-                                    <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-                                        {passwordChecks.map((check) => (
-                                            <li key={check.label} className={`flex items-start gap-2 text-sm ${check.isMet ? 'text-emerald-700' : 'text-slate-500'}`}>
-                                                <span className={`mt-1 h-2.5 w-2.5 rounded-full ${check.isMet ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                                                {check.label}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            ) : null}
+                            <div className="md:col-span-2 mt-2">
+                                <PasswordRequirements checks={passwordChecks} />
+                            </div>
 
                             {pageError ? (
                                 <div className="md:col-span-2 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">

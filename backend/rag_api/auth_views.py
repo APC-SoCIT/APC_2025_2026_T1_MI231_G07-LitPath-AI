@@ -698,11 +698,24 @@ def auth_change_password_view(request):
     user_id = request.data.get('user_id')
     current_password = request.data.get('current_password', '')
     new_password = request.data.get('new_password', '')
+    confirm_password = request.data.get('confirm_password', '')
     
     if not user_id or not current_password or not new_password:
         return Response({
             'success': False,
             'message': 'User ID, current password, and new password are required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    if confirm_password and new_password != confirm_password:
+        return Response({
+            'success': False,
+            'message': 'New passwords do not match'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    if current_password == new_password:
+        return Response({
+            'success': False,
+            'message': 'New password must be different from current password'
         }, status=status.HTTP_400_BAD_REQUEST)
     
     is_valid_password, password_error = validate_password_strength(new_password)
@@ -720,7 +733,7 @@ def auth_change_password_view(request):
             return Response({
                 'success': False,
                 'message': 'User not found'
-            }, status=status.HTTP_404_NOT_FOUND)
+            }, status=status.HTTP_403_FORBIDDEN)
         
         # Verify current password
         if not user.check_password(current_password):
@@ -732,6 +745,9 @@ def auth_change_password_view(request):
         # Update password
         user.set_password(new_password)
         user.save()
+
+        # Invalidate any active sessions for this user after the password change.
+        Session.objects.filter(user=user).delete()
         
         return Response({
             'success': True,
