@@ -434,6 +434,8 @@ class SecurityAuditLogEntry(models.Model):
     """Stores security audit events for authentication and access control reviews."""
 
     EVENT_TYPE_CHOICES = [
+        ('activity', 'Activity'),
+        ('error', 'Error'),
         ('login_success', 'Login success'),
         ('login_failure', 'Login failure'),
         ('role_change', 'Role change'),

@@ -30,6 +30,7 @@ from . admin_views import (
     admin_security_access_rule_detail_view,
     admin_security_audit_logs_view,
     admin_security_audit_log_detail_view,
+    admin_system_logs_view,
 )
 from . auth_views import (
     auth_login_view, auth_register_view, auth_guest_session_view,
@@ -128,6 +129,8 @@ urlpatterns = [
     path('admin/security-audit-logs/', admin_security_audit_logs_view, name='admin-security-audit-logs'),
     path('admin/security-audit-logs', admin_security_audit_logs_view, name='admin-security-audit-logs-no-slash'),
     path('admin/security-audit-logs/<int:log_id>/', admin_security_audit_log_detail_view, name='admin-security-audit-log-detail'),
+    path('admin/system-logs/', admin_system_logs_view, name='admin-system-logs'),
+    path('admin/system-logs', admin_system_logs_view, name='admin-system-logs-no-slash'),
 
     # Material Views (Most Browsed)
     path('track-view/', views.track_material_view, name='track_material_view'),
