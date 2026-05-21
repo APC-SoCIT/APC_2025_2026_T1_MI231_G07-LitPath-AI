@@ -116,6 +116,10 @@ const AdminDashboard = () => {
     const [showRatingsExportDropdown, setShowRatingsExportDropdown] = useState(false);
     const ratingsExportDropdownRef = useRef(null);
 
+    // ---------- Ratings Filter Dropdown ----------
+    const [showRatingDropdown, setShowRatingDropdown] = useState(false);
+    const ratingDropdownRef = useRef(null);
+
     // ---------- Feedback Manager Pagination ----------
     const [currentFeedbackPage, setCurrentFeedbackPage] = useState(1);
     const feedbackItemsPerPage = 10;
@@ -2224,79 +2228,6 @@ const AdminDashboard = () => {
             doc.setFillColor(30, 116, 188); // #1E74BC
             doc.rect(0, 0, pageWidth, 25, 'F');
 
-<<<<<<< HEAD
-            // Filter to only dormant materials for PDF
-            const dormantMaterials = allLeastAccessed ? allLeastAccessed.filter(m => m.is_dormant) : [];
-            
-            if (dormantMaterials.length === 0) {
-                showToast('No dormant materials found to export', 'error');
-                return;
-            }
-
-            // Title
-            doc.setFontSize(18);
-            doc.text("LITPATH AI - DORMANT MATERIALS REPORT", pageWidth / 2, yPos, { align: 'center' });
-            yPos += 10;
-
-            // Report header
-            doc.setFontSize(12);
-            doc.text(`Filter Period: ${filterDescription}`, 20, yPos);
-            yPos += 6;
-            doc.text(`Total Dormant Materials: ${dormantMaterials.length}`, 20, yPos);
-            yPos += 6;
-            doc.text(`Exported On: ${new Date().toLocaleString()}`, 20, yPos);
-            yPos += 12;
-
-            // Dormant Materials List
-            doc.setFontSize(14);
-            doc.text("DORMANT MATERIALS", 20, yPos);
-            yPos += 6;
-            doc.setFontSize(10);
-            doc.text(`Note: Dormant = Not accessed 30+ days OR never accessed (uploaded 30+ days ago)`, 20, yPos);
-            yPos += 8;
-            doc.setFontSize(10);
-            
-            let materialIndex = 1;
-            dormantMaterials.forEach((m) => {
-                // Check if we need a new page before adding title
-                if (yPos > 260) {
-                    doc.addPage();
-                    yPos = 20;
-                }
-                
-                const lastAccess = m.last_accessed ? new Date(m.last_accessed).toLocaleDateString() : 'Never';
-                const views = m.view_count || 0;
-                const uploaded = m.created_at ? new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
-                
-                // Split title into multiple lines to fit within page width (max width ~170mm from position 20)
-                const titleWithNumber = `${materialIndex}. ${m.title || 'Unknown'}`;
-                const titleLines = doc.splitTextToSize(titleWithNumber, 170);
-                
-                // Print wrapped title
-                titleLines.forEach(line => {
-                    if (yPos > 260) {
-                        doc.addPage();
-                        yPos = 20;
-                    }
-                    doc.text(line, 20, yPos);
-                    yPos += 5;
-                });
-                
-                // Print metadata
-                if (yPos > 260) {
-                    doc.addPage();
-                    yPos = 20;
-                }
-                doc.text(`Uploaded: ${uploaded} | Last Accessed: ${lastAccess} | Views: ${views}`, 25, yPos);
-                yPos += 7;
-                
-                materialIndex++;
-            });
-
-            // Save the PDF
-            doc.save(`LitPathAI_DormantMaterials_${new Date().toISOString().slice(0, 10)}.pdf`);
-            showToast('Dormant materials exported to PDF successfully!', 'success');
-=======
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(22);
             doc.setFont('helvetica', 'bold');
@@ -2553,7 +2484,6 @@ const AdminDashboard = () => {
             // Save the PDF
             doc.save(`LitPathAI_MaterialRatings_${new Date().toISOString().slice(0, 10)}.pdf`);
             showToast('Material Ratings exported to PDF successfully!', 'success');
->>>>>>> 6572193dbb7829dbbac5fc59ceaa5df46aca3c22
         } catch (error) {
             console.error("Ratings PDF export failed:", error);
             showToast('Failed to generate PDF export. Please try again.', 'error');
