@@ -6,6 +6,7 @@ import dostLogo from "../assets/images/dost-logo.png";
 import dostBg from "../assets/images/dost.png";
 import { API_BASE_URL } from '../services/api';
 import { getPasswordRequirementChecks, validatePasswordStrength } from '../lib/passwordValidation';
+import PasswordRequirements from '../components/PasswordRequirements';
 import { getDashboardPathForRole } from '../lib/roleLabels';
 
 type AuthMode = 'welcome' | 'login' | 'signup' | 'forgot';
@@ -670,15 +671,8 @@ const AuthPage = () => {
                                     </div>
                                 </div>
 
-                                <div className="md:col-span-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                                    <p className="text-xs font-semibold text-gray-700 mb-1">Password requirements:</p>
-                                    <ul className="list-disc list-inside text-xs space-y-1">
-                                        {signupPasswordChecks.map((requirement) => (
-                                            <li key={requirement.label} className={requirement.isMet ? 'text-green-600' : 'text-red-500'}>
-                                                {requirement.label}
-                                            </li>
-                                        ))}
-                                    </ul>
+                                <div className="md:col-span-2">
+                                    <PasswordRequirements checks={signupPasswordChecks} />
                                 </div>
                                 </div>
 

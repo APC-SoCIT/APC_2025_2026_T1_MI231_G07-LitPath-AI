@@ -15,6 +15,7 @@ import dostLogo from "../../assets/images/dost-logo.png";
 import { API_BASE_URL, apiHeaders } from '../../services/api';
 import { formatNumber } from '../../lib/formatNumber';
 import { getPasswordRequirementChecks, validatePasswordStrength } from '../../lib/passwordValidation';
+import PasswordRequirements from '../../components/PasswordRequirements';
 import { getRoleLabel, ROLE_PATHS } from '../../lib/roleLabels';
 
 const hideDefaultPasswordEyeStyles = `
@@ -1590,6 +1591,35 @@ const AdminDashboard = () => {
             const pageHeight = doc.internal.pageSize.height;
             let yPos = 20;
             
+            // Helper function to sanitize text and handle special characters
+            const sanitizeText = (text) => {
+                if (!text) return '';
+                return String(text)
+                    .replace(/\u03B4/g, 'δ') // Greek delta
+                    .replace(/\u03B1/g, 'α') // Greek alpha
+                    .replace(/\u03B2/g, 'β') // Greek beta
+                    .replace(/\u03C0/g, 'π') // Greek pi
+                    .replace(/\u2212/g, '−') // Proper minus sign
+                    .trim();
+            };
+            
+            // Helper function to calculate optimal table width and column distributions
+            const calculateOptimalTableWidth = (proportionArray) => {
+                const marginLeft = 10;
+                const marginRight = 10;
+                const availableWidth = pageWidth - marginLeft - marginRight; // ~190mm on A4
+                const totalProportion = proportionArray.reduce((a, b) => a + b, 0);
+                const columnWidths = proportionArray.map(p => (p / totalProportion) * availableWidth);
+                return { columnWidths, margin: { left: marginLeft, right: marginRight } };
+            };
+            
+            // Helper function to calculate centered margins for tables (legacy support)
+            const getTableMargins = (columnWidths) => {
+                const totalColumnWidth = columnWidths.reduce((a, b) => a + b, 0);
+                const leftMargin = Math.max(10, (pageWidth - totalColumnWidth) / 2);
+                return { left: leftMargin, right: 10 };
+            };
+            
             // Generate filter text for the report
             let filterText = '';
             if (overviewDateFilterType === 'Year') filterText = `Year ${overviewSelectedYear}`;
@@ -1633,18 +1663,21 @@ const AdminDashboard = () => {
                 ['Failed Queries', dashboardData.failedQueriesCount.toLocaleString()]
             ];
             
+            const summaryStatsWidths = calculateOptimalTableWidth([2, 1]);
             autoTable(doc, {
                 startY: yPos,
                 head: [['Metric', 'Value']],
                 body: summaryStatsData,
                 theme: 'striped',
-                headStyles: { fillColor: [30, 116, 188], textColor: 255, fontStyle: 'bold' },
+                headStyles: { fillColor: [30, 116, 188], textColor: 255, fontStyle: 'bold', fontSize: 10, cellPadding: 4 },
+                bodyStyles: { fontSize: 9, cellPadding: 3, valign: 'top' },
                 alternateRowStyles: { fillColor: [245, 248, 250] },
-                margin: { left: 14, right: 14 },
+                margin: summaryStatsWidths.margin,
                 columnStyles: {
-                    0: { cellWidth: 70, fontStyle: 'semibold' },
-                    1: { cellWidth: 60, fontStyle: 'bold' }
-                }
+                    0: { cellWidth: summaryStatsWidths.columnWidths[0], fontStyle: 'semibold' },
+                    1: { cellWidth: summaryStatsWidths.columnWidths[1], fontStyle: 'bold', halign: 'right' }
+                },
+                columnWidth: 'wrap'
             });
             
             yPos = doc.lastAutoTable.finalY + 12;
@@ -1665,25 +1698,28 @@ const AdminDashboard = () => {
             
             const trendingTopicsData = dashboardData.trendingTopics.map((topic, i) => [
                 `${i + 1}`,
-                topic.subject,
+                sanitizeText(topic.subject),
                 topic.current_views.toLocaleString(),
                 `${topic.growth >= 0 ? '+' : ''}${topic.growth}%`
             ]);
             
+            const trendingTopicsWidths = calculateOptimalTableWidth([0.8, 3.5, 1.8, 1.2]);
             autoTable(doc, {
                 startY: yPos,
                 head: [['#', 'Topic', 'Views', 'Growth']],
                 body: trendingTopicsData,
                 theme: 'striped',
-                headStyles: { fillColor: [30, 116, 188], textColor: 255, fontStyle: 'bold' },
+                headStyles: { fillColor: [30, 116, 188], textColor: 255, fontStyle: 'bold', fontSize: 10, cellPadding: 4 },
+                bodyStyles: { fontSize: 9, cellPadding: 3, valign: 'top' },
                 alternateRowStyles: { fillColor: [245, 248, 250] },
-                margin: { left: 14, right: 14 },
+                margin: trendingTopicsWidths.margin,
                 columnStyles: {
-                    0: { cellWidth: 15, halign: 'center' },
-                    1: { cellWidth: 'auto' },
-                    2: { cellWidth: 30, halign: 'right', fontStyle: 'bold' },
-                    3: { cellWidth: 25, halign: 'right' }
-                }
+                    0: { cellWidth: trendingTopicsWidths.columnWidths[0], halign: 'center' },
+                    1: { cellWidth: trendingTopicsWidths.columnWidths[1], halign: 'left' },
+                    2: { cellWidth: trendingTopicsWidths.columnWidths[2], halign: 'right', fontStyle: 'bold' },
+                    3: { cellWidth: trendingTopicsWidths.columnWidths[3], halign: 'right' }
+                },
+                columnWidth: 'wrap'
             });
             
             yPos = doc.lastAutoTable.finalY + 12;
@@ -1704,29 +1740,27 @@ const AdminDashboard = () => {
             
             const topThesesData = dashboardData.topTheses.slice(0, 10).map((thesis, i) => [
                 `${i + 1}`,
-                thesis.title || 'Unknown',
-                thesis.author || 'Unknown',
+                sanitizeText(thesis.title || 'Unknown'),
+                sanitizeText(thesis.author || 'Unknown'),
                 thesis.view_count.toLocaleString()
             ]);
             
+            const thesesWidths = calculateOptimalTableWidth([0.7, 3.2, 1.8, 1.3]);
             autoTable(doc, {
                 startY: yPos,
                 head: [['Rank', 'Title', 'Author', 'Views']],
                 body: topThesesData,
                 theme: 'striped',
-                headStyles: { fillColor: [30, 116, 188], textColor: 255, fontStyle: 'bold', fontSize: 10 },
+                headStyles: { fillColor: [30, 116, 188], textColor: 255, fontStyle: 'bold', fontSize: 10, cellPadding: 4 },
+                bodyStyles: { fontSize: 9, cellPadding: 3, valign: 'top' },
                 alternateRowStyles: { fillColor: [245, 248, 250] },
-                margin: { left: 14, right: 14 },
+                margin: thesesWidths.margin,
                 columnStyles: {
-                    0: { cellWidth: 12, halign: 'center', fontStyle: 'bold', fontSize: 9 },
-                    1: { cellWidth: 85, halign: 'left', fontSize: 9 },
-                    2: { cellWidth: 35, halign: 'left', fontSize: 9 },
-                    3: { cellWidth: 18, halign: 'right', fontStyle: 'bold', fontSize: 9 }
+                    0: { cellWidth: thesesWidths.columnWidths[0], halign: 'center', fontStyle: 'bold' },
+                    1: { cellWidth: thesesWidths.columnWidths[1], halign: 'left' },
+                    2: { cellWidth: thesesWidths.columnWidths[2], halign: 'left' },
+                    3: { cellWidth: thesesWidths.columnWidths[3], halign: 'right', fontStyle: 'bold' }
                 },
-                didDrawPage: () => {
-                    yPos = doc.lastAutoTable.finalY + 12;
-                },
-                bodyStyles: { cellPadding: 3, valign: 'middle' },
                 columnWidth: 'wrap'
             });
             
@@ -1746,48 +1780,28 @@ const AdminDashboard = () => {
             doc.text('Users by Category', 14, yPos);
             yPos += 5;
             
-            // Capture Users by Category chart
-            if (usersByCategoryChartRef.current) {
-                try {
-                    const canvas = await html2canvas(usersByCategoryChartRef.current, {
-                        scale: 2,
-                        useCORS: true,
-                        backgroundColor: '#ffffff'
-                    });
-                    const imgData = canvas.toDataURL('image/png');
-                    const imgWidth = 80;
-                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                    
-                    if (yPos + imgHeight + 10 > pageHeight - 10) {
-                        doc.addPage();
-                        yPos = 20;
-                    }
-                    
-                    doc.addImage(imgData, 'PNG', 14, yPos, imgWidth, imgHeight);
-                    yPos += imgHeight + 8;
-                } catch (err) {
-                    console.warn('Failed to capture Users by Category chart:', err);
-                }
-            }
             
             // Users by Category table (2 columns: Category and Percentage)
             const categoryData = dashboardData.usageByCategory.map(cat => [
-                cat.category,
+                sanitizeText(cat.category),
                 `${cat.percentage}%`
             ]);
             
+            const categoryWidths = calculateOptimalTableWidth([2.5, 1]);
             autoTable(doc, {
                 startY: yPos,
                 head: [['Category', 'Percentage']],
                 body: categoryData,
                 theme: 'striped',
-                headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
+                headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold', fontSize: 10, cellPadding: 4 },
+                bodyStyles: { fontSize: 9, cellPadding: 3, valign: 'top' },
                 alternateRowStyles: { fillColor: [245, 248, 250] },
-                margin: { left: 14, right: 14 },
+                margin: categoryWidths.margin,
                 columnStyles: {
-                    0: { cellWidth: 'auto', fontStyle: 'semibold' },
-                    1: { cellWidth: 40, halign: 'right', fontStyle: 'bold' }
-                }
+                    0: { cellWidth: categoryWidths.columnWidths[0], fontStyle: 'semibold', halign: 'left' },
+                    1: { cellWidth: categoryWidths.columnWidths[1], halign: 'right', fontStyle: 'bold' }
+                },
+                columnWidth: 'wrap'
             });
             
             yPos = doc.lastAutoTable.finalY + 12;
@@ -1809,24 +1823,27 @@ const AdminDashboard = () => {
             
             // Age Distribution table
             const ageData = dashboardData.ageDistribution.map(age => [
-                age.age,
+                sanitizeText(age.age),
                 age.count.toLocaleString(),
                 `${age.percentage}%`
             ]);
             
+            const ageWidths = calculateOptimalTableWidth([2.2, 1.5, 1.3]);
             autoTable(doc, {
                 startY: yPos,
                 head: [['Age Range', 'Count', 'Percentage']],
                 body: ageData,
                 theme: 'striped',
-                headStyles: { fillColor: [168, 85, 247], textColor: 255, fontStyle: 'bold' },
+                headStyles: { fillColor: [168, 85, 247], textColor: 255, fontStyle: 'bold', fontSize: 10, cellPadding: 4 },
+                bodyStyles: { fontSize: 9, cellPadding: 3, valign: 'top' },
                 alternateRowStyles: { fillColor: [245, 248, 250] },
-                margin: { left: 14, right: 14 },
+                margin: ageWidths.margin,
                 columnStyles: {
-                    0: { cellWidth: 'auto', fontStyle: 'semibold' },
-                    1: { cellWidth: 30, halign: 'right' },
-                    2: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }
-                }
+                    0: { cellWidth: ageWidths.columnWidths[0], fontStyle: 'semibold', halign: 'left' },
+                    1: { cellWidth: ageWidths.columnWidths[1], halign: 'right' },
+                    2: { cellWidth: ageWidths.columnWidths[2], halign: 'right', fontStyle: 'bold' }
+                },
+                columnWidth: 'wrap'
             });
             
             yPos = doc.lastAutoTable.finalY + 12;
@@ -1846,23 +1863,24 @@ const AdminDashboard = () => {
             yPos += 5;
             
             const failedQueriesData = dashboardData.failedQueries.slice(0, 15).map(query => [
-                query.query || 'Unknown',
+                sanitizeText(query.query || 'Unknown'),
                 query.count.toLocaleString()
             ]);
             
+            const queriesWidths = calculateOptimalTableWidth([3.5, 1]);
             autoTable(doc, {
                 startY: yPos,
                 head: [['Query', 'Count']],
                 body: failedQueriesData,
                 theme: 'striped',
-                headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: 'bold', fontSize: 10 },
+                headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: 'bold', fontSize: 10, cellPadding: 4 },
+                bodyStyles: { fontSize: 9, cellPadding: 3, valign: 'top' },
                 alternateRowStyles: { fillColor: [254, 242, 242] },
-                margin: { left: 14, right: 14 },
+                margin: queriesWidths.margin,
                 columnStyles: {
-                    0: { cellWidth: 125, halign: 'left', fontSize: 9 },
-                    1: { cellWidth: 25, halign: 'right', fontStyle: 'bold', fontSize: 9 }
+                    0: { cellWidth: queriesWidths.columnWidths[0], halign: 'left' },
+                    1: { cellWidth: queriesWidths.columnWidths[1], halign: 'right', fontStyle: 'bold' }
                 },
-                bodyStyles: { cellPadding: 3, valign: 'middle' },
                 columnWidth: 'wrap'
             });
             
@@ -2133,6 +2151,35 @@ const AdminDashboard = () => {
             const pageHeight = doc.internal.pageSize.height;
             let yPos = 20;
 
+            // Helper function to sanitize text and handle special characters
+            const sanitizeText = (text) => {
+                if (!text) return '';
+                return String(text)
+                    .replace(/\u03B4/g, 'δ') // Greek delta
+                    .replace(/\u03B1/g, 'α') // Greek alpha
+                    .replace(/\u03B2/g, 'β') // Greek beta
+                    .replace(/\u03C0/g, 'π') // Greek pi
+                    .replace(/\u2212/g, '−') // Proper minus sign
+                    .trim();
+            };
+
+            // Helper function to calculate optimal table width and column distributions
+            const calculateOptimalTableWidth = (proportionArray) => {
+                const marginLeft = 10;
+                const marginRight = 10;
+                const availableWidth = pageWidth - marginLeft - marginRight; // ~190mm on A4
+                const totalProportion = proportionArray.reduce((a, b) => a + b, 0);
+                const columnWidths = proportionArray.map(p => (p / totalProportion) * availableWidth);
+                return { columnWidths, margin: { left: marginLeft, right: marginRight } };
+            };
+
+            // Helper function to calculate centered margins for tables (legacy support)
+            const getTableMargins = (columnWidths) => {
+                const totalColumnWidth = columnWidths.reduce((a, b) => a + b, 0);
+                const leftMargin = Math.max(10, (pageWidth - totalColumnWidth) / 2);
+                return { left: leftMargin, right: 10 };
+            };
+
             // Determine the date range based on the current filter
             let filterText = '';
             let fromDateStr = '', toDateStr = '';
@@ -2287,13 +2334,15 @@ const AdminDashboard = () => {
                 head: [['Metric', 'Value']],
                 body: summaryStatsData,
                 theme: 'striped',
-                headStyles: { fillColor: [30, 116, 188], textColor: 255, fontStyle: 'bold' },
+                headStyles: { fillColor: [30, 116, 188], textColor: 255, fontStyle: 'bold', fontSize: 10, cellPadding: 4 },
+                bodyStyles: { fontSize: 9, cellPadding: 3, valign: 'top' },
                 alternateRowStyles: { fillColor: [245, 248, 250] },
-                margin: { left: 14, right: 14 },
+                margin: calculateOptimalTableWidth([2, 1]).margin,
                 columnStyles: {
-                    0: { cellWidth: 70, fontStyle: 'semibold' },
-                    1: { cellWidth: 60, fontStyle: 'bold' }
-                }
+                    0: { cellWidth: calculateOptimalTableWidth([2, 1]).columnWidths[0], fontStyle: 'semibold' },
+                    1: { cellWidth: calculateOptimalTableWidth([2, 1]).columnWidths[1], fontStyle: 'bold', halign: 'right' }
+                },
+                columnWidth: 'wrap'
             });
 
             yPos = doc.lastAutoTable.finalY + 12;
@@ -2318,19 +2367,22 @@ const AdminDashboard = () => {
                 ['Not Relevant', `${notRelevantCount}`, `${(100 - relevanceScore).toFixed(1)}%`]
             ];
 
+            const ratingDistWidths = calculateOptimalTableWidth([2.2, 1.4, 1.4]);
             autoTable(doc, {
                 startY: yPos,
                 head: [['Rating Type', 'Count', 'Percentage']],
                 body: ratingDistData,
                 theme: 'striped',
-                headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
+                headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold', fontSize: 10, cellPadding: 4 },
+                bodyStyles: { fontSize: 9, cellPadding: 3, valign: 'top' },
                 alternateRowStyles: { fillColor: [245, 248, 250] },
-                margin: { left: 14, right: 14 },
+                margin: ratingDistWidths.margin,
                 columnStyles: {
-                    0: { cellWidth: 'auto', fontStyle: 'semibold' },
-                    1: { cellWidth: 30, halign: 'right' },
-                    2: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }
-                }
+                    0: { cellWidth: ratingDistWidths.columnWidths[0], fontStyle: 'semibold', halign: 'left' },
+                    1: { cellWidth: ratingDistWidths.columnWidths[1], halign: 'right' },
+                    2: { cellWidth: ratingDistWidths.columnWidths[2], halign: 'right', fontStyle: 'bold' }
+                },
+                columnWidth: 'wrap'
             });
 
             yPos = doc.lastAutoTable.finalY + 12;
@@ -2390,24 +2442,25 @@ const AdminDashboard = () => {
             const topMaterials = getTopMaterials(filteredRatings).slice(0, 10);
             const topMaterialsData = topMaterials.map((item, i) => [
                 `${i + 1}`,
-                item.title || 'Unknown',
+                sanitizeText(item.title || 'Unknown'),
                 item.count.toLocaleString()
             ]);
 
+            const topMaterialsWidths = calculateOptimalTableWidth([0.7, 3.5, 1.3]);
             autoTable(doc, {
                 startY: yPos,
                 head: [['Rank', 'Material Title', 'Helpful Votes']],
                 body: topMaterialsData,
                 theme: 'striped',
-                headStyles: { fillColor: [34, 197, 94], textColor: 255, fontStyle: 'bold', fontSize: 10 },
+                headStyles: { fillColor: [34, 197, 94], textColor: 255, fontStyle: 'bold', fontSize: 10, cellPadding: 4 },
+                bodyStyles: { fontSize: 9, cellPadding: 3, valign: 'top' },
                 alternateRowStyles: { fillColor: [245, 248, 250] },
-                margin: { left: 14, right: 14 },
+                margin: topMaterialsWidths.margin,
                 columnStyles: {
-                    0: { cellWidth: 12, halign: 'center', fontStyle: 'bold', fontSize: 9 },
-                    1: { cellWidth: 110, halign: 'left', fontSize: 9 },
-                    2: { cellWidth: 28, halign: 'right', fontStyle: 'bold', fontSize: 9 }
+                    0: { cellWidth: topMaterialsWidths.columnWidths[0], halign: 'center', fontStyle: 'bold' },
+                    1: { cellWidth: topMaterialsWidths.columnWidths[1], halign: 'left' },
+                    2: { cellWidth: topMaterialsWidths.columnWidths[2], halign: 'right', fontStyle: 'bold' }
                 },
-                bodyStyles: { cellPadding: 3, valign: 'middle' },
                 columnWidth: 'wrap'
             });
 
@@ -2429,26 +2482,27 @@ const AdminDashboard = () => {
 
             const ratingsLogData = filteredRatings.slice(0, 75).map((r) => [
                 new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }),
-                r.material_title || r.document_file || 'Unknown',
+                sanitizeText(r.material_title || r.document_file || 'Unknown'),
                 r.relevant === true ? 'Helpful' : 'Not Relevant',
-                r.message_comment && r.message_comment.trim() ? r.message_comment : '—'
+                sanitizeText(r.message_comment && r.message_comment.trim() ? r.message_comment : '—')
             ]);
 
+            const logWidths = calculateOptimalTableWidth([0.9, 2.8, 1.2, 1.6]);
             autoTable(doc, {
                 startY: yPos,
                 head: [['Date', 'Material', 'Rating', 'Comment']],
                 body: ratingsLogData,
                 theme: 'striped',
-                headStyles: { fillColor: [168, 85, 247], textColor: 255, fontStyle: 'bold', fontSize: 10 },
+                headStyles: { fillColor: [168, 85, 247], textColor: 255, fontStyle: 'bold', fontSize: 10, cellPadding: 3 },
+                bodyStyles: { fontSize: 8, cellPadding: 2, valign: 'top' },
                 alternateRowStyles: { fillColor: [245, 248, 250] },
-                margin: { left: 14, right: 14 },
+                margin: logWidths.margin,
                 columnStyles: {
-                    0: { cellWidth: 18, halign: 'center', fontSize: 8 },
-                    1: { cellWidth: 75, halign: 'left', fontSize: 8 },
-                    2: { cellWidth: 22, halign: 'center', fontStyle: 'semibold', fontSize: 8 },
-                    3: { cellWidth: 35, halign: 'left', fontSize: 8 }
+                    0: { cellWidth: logWidths.columnWidths[0], halign: 'center' },
+                    1: { cellWidth: logWidths.columnWidths[1], halign: 'left' },
+                    2: { cellWidth: logWidths.columnWidths[2], halign: 'center', fontStyle: 'semibold' },
+                    3: { cellWidth: logWidths.columnWidths[3], halign: 'left' }
                 },
-                bodyStyles: { cellPadding: 2, valign: 'top' },
                 columnWidth: 'wrap'
             });
 
@@ -2470,27 +2524,28 @@ const AdminDashboard = () => {
                 yPos += 5;
 
                 const leastAccessedData = leastAccessedMaterials.slice(0, 15).map((m) => [
-                    m.title || 'Unknown',
+                    sanitizeText(m.title || 'Unknown'),
                     m.view_count || 0,
                     m.last_accessed ? new Date(m.last_accessed).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Never',
                     m.is_dormant ? 'Dormant' : m.view_count === 0 ? '0 Views' : m.view_count < 20 ? 'Low' : 'Moderate'
                 ]);
 
+                const leastAccessedWidths = calculateOptimalTableWidth([2.5, 0.8, 1.2, 1.5]);
                 autoTable(doc, {
                     startY: yPos,
                     head: [['Material', 'Views', 'Last Accessed', 'Status']],
                     body: leastAccessedData,
                     theme: 'striped',
-                    headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: 'bold', fontSize: 10 },
+                    headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: 'bold', fontSize: 10, cellPadding: 4 },
+                    bodyStyles: { fontSize: 9, cellPadding: 3, valign: 'top' },
                     alternateRowStyles: { fillColor: [245, 248, 250] },
-                    margin: { left: 14, right: 14 },
+                    margin: leastAccessedWidths.margin,
                     columnStyles: {
-                        0: { cellWidth: 95, halign: 'left', fontSize: 9 },
-                        1: { cellWidth: 15, halign: 'right', fontSize: 9 },
-                        2: { cellWidth: 25, halign: 'center', fontSize: 9 },
-                        3: { cellWidth: 25, halign: 'center', fontStyle: 'semibold', fontSize: 9 }
+                        0: { cellWidth: leastAccessedWidths.columnWidths[0], halign: 'left' },
+                        1: { cellWidth: leastAccessedWidths.columnWidths[1], halign: 'right' },
+                        2: { cellWidth: leastAccessedWidths.columnWidths[2], halign: 'center' },
+                        3: { cellWidth: leastAccessedWidths.columnWidths[3], halign: 'center', fontStyle: 'semibold' }
                     },
-                    bodyStyles: { cellPadding: 3, valign: 'middle' },
                     columnWidth: 'wrap'
                 });
             }
@@ -5303,15 +5358,8 @@ const AdminDashboard = () => {
                             </div>
 
                             {/* Password hint */}
-                            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 mt-1">
-                                <p className="text-xs font-semibold text-gray-700 mb-1">Password requirements:</p>
-                                <ul className="list-disc list-inside text-xs space-y-1">
-                                    {passwordChecks.map((requirement) => (
-                                        <li key={requirement.label} className={requirement.isMet ? 'text-green-600' : 'text-red-500'}>
-                                            {requirement.label}
-                                        </li>
-                                    ))}
-                                </ul>
+                            <div className="mt-1">
+                                <PasswordRequirements checks={passwordChecks} />
                             </div>
 
                             <button

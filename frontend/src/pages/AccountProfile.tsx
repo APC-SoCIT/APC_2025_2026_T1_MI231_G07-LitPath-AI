@@ -5,6 +5,7 @@ import { RefreshCw, Save, User, KeyRound } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../services/api';
 import { getPasswordRequirementChecks, validatePasswordStrength } from '../lib/passwordValidation';
+import PasswordRequirements from '../components/PasswordRequirements';
 
 const AccountProfile = () => {
     const navigate = useNavigate();
@@ -270,15 +271,8 @@ const AccountProfile = () => {
                 <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 mt-6">
                     <h2 className="text-xl font-semibold text-gray-900 mb-4">Security</h2>
                     <p className="text-xs text-gray-500 mb-4">Leave blank if you do not want to change password.</p>
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 mb-4">
-                        <p className="text-xs font-semibold text-gray-700 mb-1">Password requirements:</p>
-                        <ul className="list-disc list-inside text-xs space-y-1">
-                            {passwordChecks.map((requirement) => (
-                                <li key={requirement.label} className={requirement.isMet ? 'text-green-600' : 'text-red-500'}>
-                                    {requirement.label}
-                                </li>
-                            ))}
-                        </ul>
+                    <div className="mb-4">
+                        <PasswordRequirements checks={passwordChecks} />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
