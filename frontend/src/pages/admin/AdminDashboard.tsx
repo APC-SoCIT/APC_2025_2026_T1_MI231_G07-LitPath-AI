@@ -5635,6 +5635,7 @@ const AdminDashboard = () => {
                                     PDF
                                 </button>
                                 <button
+                                    title="Close dormant materials modal"
                                     onClick={() => setShowDormantMaterialsModal(false)}
                                     className="bg-[#1E74BC] hover:bg-red-600 text-white px-3 py-2 rounded-lg transition-colors ml-2"
                                 >
