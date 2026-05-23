@@ -152,6 +152,10 @@ const AdminDashboard = () => {
     const [showAccountSettings, setShowAccountSettings] = useState(false);
     const [settingsTab, setSettingsTab] = useState('profile');
 
+    // ---------- Dormant Materials Modal ----------
+    const [showDormantMaterialsModal, setShowDormantMaterialsModal] = useState(false);
+    const [dormantMaterialsList, setDormantMaterialsList] = useState([]);
+
     // ---------- Feedback Details Modal ----------
     const [selectedFeedback, setSelectedFeedback] = useState(null);
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -1599,13 +1603,41 @@ const AdminDashboard = () => {
             const sanitizeText = (text) => {
                 if (!text) return '';
                 return String(text)
-                    .replace(/\u03B4/g, 'δ') // Greek delta
-                    .replace(/\u03B1/g, 'α') // Greek alpha
-                    .replace(/\u03B2/g, 'β') // Greek beta
-                    .replace(/\u03C0/g, 'π') // Greek pi
-                    .replace(/\u2212/g, '−') // Proper minus sign
+                    // Handle problematic Unicode characters that don't render well in courier font
+                    .replace(/º/g, 'o') // Masculine ordinal indicator to 'o'
+                    .replace(/ª/g, 'a') // Feminine ordinal indicator to 'a'
+                    .replace(/°/g, 'o') // Degree symbol to 'o'
+                    .replace(/²/g, '^2') // Superscript 2 to ^2
+                    .replace(/³/g, '^3') // Superscript 3 to ^3
+                    .replace(/¹/g, '^1') // Superscript 1 to ^1
+                    .replace(/×/g, 'x') // Multiplication sign to 'x'
+                    .replace(/÷/g, '/') // Division sign to /
+                    .replace(/´/g, "'") // Acute accent to apostrophe
+                    .replace(/`/g, "'") // Grave accent to apostrophe
+                    .replace(/¨/g, '') // Diaeresis to empty
+                    .replace(/¯/g, '-') // Macron to dash
+                    .replace(/µ/g, 'u') // Micro sign to 'u'
+                    .replace(/·/g, '.') // Middle dot to period
+                    .replace(/•/g, '-') // Bullet to dash
+                    .replace(/¢/g, 'c') // Cent sign
+                    .replace(/£/g, '') // Pound sign
+                    .replace(/¤/g, '') // Currency sign
+                    .replace(/¥/g, '') // Yen sign
+                    .replace(/§/g, '') // Section sign
+                    .replace(/¶/g, '') // Pilcrow
+                    // Handle dashes and quotes
+                    .replace(/\u2212/g, '-') // Proper minus sign
+                    .replace(/[\u2013\u2014]/g, '-') // En/Em dash to hyphen
+                    .replace(/[\u2018\u2019]/g, "'") // Smart quotes to apostrophe
+                    .replace(/[\u201C\u201D]/g, '"') // Smart double quotes to regular quotes
+                    // Remove any remaining non-ASCII characters that aren't handled
+                    .replace(/[^\x20-\x7E]/g, ' ')
+                    .replace(/\s+/g, ' ') // Normalize multiple spaces
                     .trim();
             };
+            
+            // Ensure PDF uses proper font configuration
+            doc.setFont('courier', 'normal');
             
             // Helper function to calculate optimal table width and column distributions
             const calculateOptimalTableWidth = (proportionArray) => {
@@ -1641,12 +1673,12 @@ const AdminDashboard = () => {
             
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(22);
-            doc.setFont('helvetica', 'bold');
-            doc.text('Thesis & Dissertation Usage Report', pageWidth / 2, 12, { align: 'center' });
+            doc.setFont('courier', 'bold');
+            doc.text(sanitizeText('Thesis & Dissertation Usage Report'), pageWidth / 2, 12, { align: 'center' });
             
             doc.setFontSize(11);
-            doc.setFont('helvetica', 'normal');
-            doc.text(`${filterText} | Exported: ${exportDate}`, pageWidth / 2, 20, { align: 'center' });
+            doc.setFont('courier', 'normal');
+            doc.text(sanitizeText(`${filterText} | Exported: ${exportDate}`), pageWidth / 2, 20, { align: 'center' });
             
             yPos = 32;
             
@@ -1654,9 +1686,9 @@ const AdminDashboard = () => {
             // SECTION 1: SUMMARY STATS — Clean labeled table
             // ============================================
             doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
+            doc.setFont('courier', 'bold');
             doc.setTextColor(30, 116, 188);
-            doc.text('Summary Statistics', 14, yPos);
+            doc.text(sanitizeText('Summary Statistics'), 14, yPos);
             yPos += 5;
             
             const summaryStatsData = [
@@ -1695,9 +1727,9 @@ const AdminDashboard = () => {
             }
             
             doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
+            doc.setFont('courier', 'bold');
             doc.setTextColor(30, 116, 188);
-            doc.text('Trending Topics', 14, yPos);
+            doc.text(sanitizeText('Trending Topics'), 14, yPos);
             yPos += 5;
             
             const trendingTopicsData = dashboardData.trendingTopics.map((topic, i) => [
@@ -1737,9 +1769,9 @@ const AdminDashboard = () => {
             }
             
             doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
+            doc.setFont('courier', 'bold');
             doc.setTextColor(30, 116, 188);
-            doc.text('Most Viewed Theses', 14, yPos);
+            doc.text(sanitizeText('Most Viewed Theses'), 14, yPos);
             yPos += 5;
             
             const topThesesData = dashboardData.topTheses.slice(0, 10).map((thesis, i) => [
@@ -1779,9 +1811,9 @@ const AdminDashboard = () => {
             }
             
             doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
+            doc.setFont('courier', 'bold');
             doc.setTextColor(30, 116, 188);
-            doc.text('Users by Category', 14, yPos);
+            doc.text(sanitizeText('Users by Category'), 14, yPos);
             yPos += 5;
             
             
@@ -1819,9 +1851,9 @@ const AdminDashboard = () => {
             }
             
             doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
+            doc.setFont('courier', 'bold');
             doc.setTextColor(30, 116, 188);
-            doc.text('Age Distribution', 14, yPos);
+            doc.text(sanitizeText('Age Distribution'), 14, yPos);
             yPos += 5;
             
             
@@ -2159,13 +2191,41 @@ const AdminDashboard = () => {
             const sanitizeText = (text) => {
                 if (!text) return '';
                 return String(text)
-                    .replace(/\u03B4/g, 'δ') // Greek delta
-                    .replace(/\u03B1/g, 'α') // Greek alpha
-                    .replace(/\u03B2/g, 'β') // Greek beta
-                    .replace(/\u03C0/g, 'π') // Greek pi
-                    .replace(/\u2212/g, '−') // Proper minus sign
+                    // Handle problematic Unicode characters that don't render well in courier font
+                    .replace(/º/g, 'o') // Masculine ordinal indicator to 'o'
+                    .replace(/ª/g, 'a') // Feminine ordinal indicator to 'a'
+                    .replace(/°/g, 'o') // Degree symbol to 'o'
+                    .replace(/²/g, '^2') // Superscript 2 to ^2
+                    .replace(/³/g, '^3') // Superscript 3 to ^3
+                    .replace(/¹/g, '^1') // Superscript 1 to ^1
+                    .replace(/×/g, 'x') // Multiplication sign to 'x'
+                    .replace(/÷/g, '/') // Division sign to /
+                    .replace(/´/g, "'") // Acute accent to apostrophe
+                    .replace(/`/g, "'") // Grave accent to apostrophe
+                    .replace(/¨/g, '') // Diaeresis to empty
+                    .replace(/¯/g, '-') // Macron to dash
+                    .replace(/µ/g, 'u') // Micro sign to 'u'
+                    .replace(/·/g, '.') // Middle dot to period
+                    .replace(/•/g, '-') // Bullet to dash
+                    .replace(/¢/g, 'c') // Cent sign
+                    .replace(/£/g, '') // Pound sign
+                    .replace(/¤/g, '') // Currency sign
+                    .replace(/¥/g, '') // Yen sign
+                    .replace(/§/g, '') // Section sign
+                    .replace(/¶/g, '') // Pilcrow
+                    // Handle dashes and quotes
+                    .replace(/\u2212/g, '-') // Proper minus sign
+                    .replace(/[\u2013\u2014]/g, '-') // En/Em dash to hyphen
+                    .replace(/[\u2018\u2019]/g, "'") // Smart quotes to apostrophe
+                    .replace(/[\u201C\u201D]/g, '"') // Smart double quotes to regular quotes
+                    // Remove any remaining non-ASCII characters that aren't handled
+                    .replace(/[^\x20-\x7E]/g, ' ')
+                    .replace(/\s+/g, ' ') // Normalize multiple spaces
                     .trim();
             };
+
+            // Ensure PDF uses proper font configuration
+            doc.setFont('courier', 'normal');
 
             // Helper function to calculate optimal table width and column distributions
             const calculateOptimalTableWidth = (proportionArray) => {
@@ -2230,12 +2290,12 @@ const AdminDashboard = () => {
 
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(22);
-            doc.setFont('helvetica', 'bold');
-            doc.text('Content Quality & Material Ratings Report', pageWidth / 2, 12, { align: 'center' });
+            doc.setFont('courier', 'bold');
+            doc.text(sanitizeText('Content Quality & Material Ratings Report'), pageWidth / 2, 12, { align: 'center' });
 
             doc.setFontSize(11);
-            doc.setFont('helvetica', 'normal');
-            doc.text(`${filterText} | Exported: ${exportDate}`, pageWidth / 2, 20, { align: 'center' });
+            doc.setFont('courier', 'normal');
+            doc.text(sanitizeText(`${filterText} | Exported: ${exportDate}`), pageWidth / 2, 20, { align: 'center' });
 
             yPos = 32;
 
@@ -2243,9 +2303,9 @@ const AdminDashboard = () => {
             // SECTION 1: SUMMARY STATISTICS — Clean labeled table
             // ============================================
             doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
+            doc.setFont('courier', 'bold');
             doc.setTextColor(30, 116, 188);
-            doc.text('Summary Statistics', 14, yPos);
+            doc.text(sanitizeText('Summary Statistics'), 14, yPos);
             yPos += 5;
 
             const helpfulCount = filteredRatings.filter(r => r.relevant === true).length;
@@ -2287,9 +2347,9 @@ const AdminDashboard = () => {
             }
 
             doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
+            doc.setFont('courier', 'bold');
             doc.setTextColor(30, 116, 188);
-            doc.text('Rating Distribution', 14, yPos);
+            doc.text(sanitizeText('Rating Distribution'), 14, yPos);
             yPos += 5;
 
             // Rating Distribution breakdown table
@@ -2327,9 +2387,9 @@ const AdminDashboard = () => {
             }
 
             doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
+            doc.setFont('courier', 'bold');
             doc.setTextColor(30, 116, 188);
-            doc.text('Rating Trend Over Time', 14, yPos);
+            doc.text(sanitizeText('Rating Trend Over Time'), 14, yPos);
             yPos += 5;
 
             // Capture Rating Trend chart
@@ -2365,9 +2425,9 @@ const AdminDashboard = () => {
             }
 
             doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
+            doc.setFont('courier', 'bold');
             doc.setTextColor(30, 116, 188);
-            doc.text('Top Rated Materials', 14, yPos);
+            doc.text(sanitizeText('Top Rated Materials'), 14, yPos);
             yPos += 5;
 
             const topMaterials = getTopMaterials(filteredRatings).slice(0, 10);
@@ -2406,9 +2466,9 @@ const AdminDashboard = () => {
             }
 
             doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
+            doc.setFont('courier', 'bold');
             doc.setTextColor(30, 116, 188);
-            doc.text('Detailed Ratings Log', 14, yPos);
+            doc.text(sanitizeText('Detailed Ratings Log'), 14, yPos);
             yPos += 5;
 
             const ratingsLogData = filteredRatings.slice(0, 75).map((r) => [
@@ -2449,9 +2509,9 @@ const AdminDashboard = () => {
                 }
 
                 doc.setFontSize(14);
-                doc.setFont('helvetica', 'bold');
+                doc.setFont('courier', 'bold');
                 doc.setTextColor(239, 68, 68);
-                doc.text('Least Viewed Materials', 14, yPos);
+                doc.text(sanitizeText('Least Viewed Materials'), 14, yPos);
                 yPos += 5;
 
                 const leastAccessedData = leastAccessedMaterials.slice(0, 15).map((m) => [
@@ -2487,6 +2547,220 @@ const AdminDashboard = () => {
         } catch (error) {
             console.error("Ratings PDF export failed:", error);
             showToast('Failed to generate PDF export. Please try again.', 'error');
+        }
+    };
+
+    // ---------- Dormant Materials Modal Functions ----------
+    const handleOpenDormantMaterialsModal = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/dashboard/least-browsed/?limit=1000`, {
+                headers: apiHeaders(true)
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const dormantMaterials = data.filter(m => m.is_dormant);
+                setDormantMaterialsList(dormantMaterials);
+                setShowDormantMaterialsModal(true);
+            }
+        } catch (error) {
+            console.error("Failed to fetch dormant materials", error);
+            showToast('Failed to load dormant materials', 'error');
+        }
+    };
+
+    const handleDormantMaterialsExportCSV = () => {
+        try {
+            if (dormantMaterialsList.length === 0) {
+                showToast('No dormant materials to export', 'error');
+                return;
+            }
+
+            const rows = [];
+            const exportDate = new Date().toLocaleDateString();
+
+            const escape = (text) => {
+                if (text === null || text === undefined) return '';
+                const str = String(text);
+                return `"${str.replace(/"/g, '""')}"`;
+            };
+
+            const getLocalDateString = () => {
+                const d = new Date();
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+
+            // Header section
+            rows.push(["LITPATH AI - DORMANT MATERIALS REPORT"]);
+            rows.push(["Export Date", exportDate]);
+            rows.push(["Total Dormant Materials", dormantMaterialsList.length]);
+            rows.push([]);
+
+            // Column headers
+            rows.push(["Title", "Uploaded Date", "Last Accessed", "Views", "Status"]);
+
+            // Data rows
+            dormantMaterialsList.forEach(material => {
+                const uploadedDate = material.created_at 
+                    ? new Date(material.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                    : '—';
+                const lastAccessed = material.last_accessed 
+                    ? new Date(material.last_accessed).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                    : 'Never';
+
+                rows.push([
+                    escape(material.title || ''),
+                    escape(uploadedDate),
+                    escape(lastAccessed),
+                    escape(material.view_count || 0),
+                    'Dormant'
+                ]);
+            });
+
+            const csvContent = rows.map(row => row.join(',')).join('\r\n');
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `LitPathAI_DormantMaterials_${getLocalDateString()}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showToast('Dormant materials exported to CSV successfully!', 'success');
+        } catch (error) {
+            console.error("Dormant materials CSV export failed:", error);
+            showToast('Failed to export dormant materials. Please try again.', 'error');
+        }
+    };
+
+    const handleDormantMaterialsExportPDF = async () => {
+        try {
+            if (dormantMaterialsList.length === 0) {
+                showToast('No dormant materials to export', 'error');
+                return;
+            }
+
+            const { jsPDF } = await import('jspdf');
+            const { default: autoTable } = await import('jspdf-autotable');
+            
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.width;
+            const pageHeight = doc.internal.pageSize.height;
+            let yPos = 20;
+            
+            // Helper function to sanitize text and handle special characters
+            const sanitizeText = (text) => {
+                if (!text) return '';
+                return String(text)
+                    // Handle problematic Unicode characters that don't render well in courier font
+                    .replace(/º/g, 'o') // Masculine ordinal indicator to 'o'
+                    .replace(/ª/g, 'a') // Feminine ordinal indicator to 'a'
+                    .replace(/°/g, 'o') // Degree symbol to 'o'
+                    .replace(/²/g, '^2') // Superscript 2 to ^2
+                    .replace(/³/g, '^3') // Superscript 3 to ^3
+                    .replace(/¹/g, '^1') // Superscript 1 to ^1
+                    .replace(/×/g, 'x') // Multiplication sign to 'x'
+                    .replace(/÷/g, '/') // Division sign to /
+                    .replace(/´/g, "'") // Acute accent to apostrophe
+                    .replace(/`/g, "'") // Grave accent to apostrophe
+                    .replace(/¨/g, '') // Diaeresis to empty
+                    .replace(/¯/g, '-') // Macron to dash
+                    .replace(/µ/g, 'u') // Micro sign to 'u'
+                    .replace(/·/g, '.') // Middle dot to period
+                    .replace(/•/g, '-') // Bullet to dash
+                    .replace(/¢/g, 'c') // Cent sign
+                    .replace(/£/g, '') // Pound sign
+                    .replace(/¤/g, '') // Currency sign
+                    .replace(/¥/g, '') // Yen sign
+                    .replace(/§/g, '') // Section sign
+                    .replace(/¶/g, '') // Pilcrow
+                    .replace(/¹/g, '1') // Superscript 1
+                    // Handle dashes and quotes
+                    .replace(/\u2212/g, '-') // Proper minus sign
+                    .replace(/[\u2013\u2014]/g, '-') // En/Em dash to hyphen
+                    .replace(/[\u2018\u2019]/g, "'") // Smart quotes to apostrophe
+                    .replace(/[\u201C\u201D]/g, '"') // Smart double quotes to regular quotes
+                    // Remove any remaining non-ASCII characters that aren't handled
+                    .replace(/[^\x20-\x7E]/g, ' ')
+                    .replace(/\s+/g, ' ') // Normalize multiple spaces
+                    .trim();
+            };
+            
+            // Set default font for better Unicode support
+            doc.setFont('courier', 'normal');
+
+            // Header
+            doc.setFillColor(30, 116, 188);
+            doc.rect(0, 0, pageWidth, 25, 'F');
+            
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            doc.setFont('courier', 'bold');
+            doc.text(sanitizeText('Dormant Materials Report'), pageWidth / 2, 12, { align: 'center' });
+
+            doc.setFontSize(11);
+            doc.setFont('courier', 'normal');
+            const exportDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+            doc.text(sanitizeText(`Exported: ${exportDate} | Total: ${dormantMaterialsList.length}`), pageWidth / 2, 20, { align: 'center' });
+
+            yPos = 32;
+
+            // Summary
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(14);
+            doc.setFont('courier', 'bold');
+            doc.setTextColor(30, 116, 188);
+            doc.text(sanitizeText('Summary'), 14, yPos);
+            yPos += 5;
+
+            doc.setFontSize(10);
+            doc.setFont('courier', 'normal');
+            doc.setTextColor(0, 0, 0);
+            doc.text(sanitizeText(`Total Dormant Materials: ${dormantMaterialsList.length}`), 14, yPos);
+            yPos += 5;
+            doc.text(sanitizeText(`Definition: Materials not accessed for 30+ days or never accessed (uploaded 30+ days ago)`), 14, yPos);
+            yPos += 8;
+
+            // Table data - sanitize all titles to handle special characters
+            const tableData = dormantMaterialsList.map(material => [
+                sanitizeText(material.title || '—'),
+                material.created_at ? new Date(material.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—',
+                material.last_accessed ? new Date(material.last_accessed).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Never',
+                (material.view_count || 0).toString()
+            ]);
+
+            autoTable(doc, {
+                head: [['Title', 'Uploaded', 'Last Accessed', 'Views']],
+                body: tableData,
+                startY: yPos,
+                margin: 14,
+                columnStyles: {
+                    0: { cellWidth: 100, halign: 'left' },
+                    1: { cellWidth: 30, halign: 'center' },
+                    2: { cellWidth: 30, halign: 'center' },
+                    3: { cellWidth: 20, halign: 'center' }
+                },
+                didDrawPage: (data) => {
+                    const pageCount = doc.getNumberOfPages();
+                    const pageSize = doc.internal.pageSize;
+                    const pageHeight = pageSize.height;
+
+                    if (pageCount > 1) {
+                        doc.setFontSize(10);
+                        doc.text(`Page ${pageCount}`, 14, pageHeight - 10);
+                    }
+                }
+            });
+
+            doc.save(`LitPathAI_DormantMaterials_${new Date().toISOString().slice(0, 10)}.pdf`);
+            showToast('Dormant materials exported to PDF successfully!', 'success');
+        } catch (error) {
+            console.error("Dormant materials PDF export failed:", error);
+            showToast('Failed to export dormant materials to PDF. Please try again.', 'error');
         }
     };
 
@@ -4745,16 +5019,29 @@ const AdminDashboard = () => {
                                 </div>
 
                                 {/* Dormant Materials */}
-                                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                                <div 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenDormantMaterialsModal();
+                                    }}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyPress={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            handleOpenDormantMaterialsModal();
+                                        }
+                                    }}
+                                    className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-blue-200 transition-all"
+                                >
                                     <div className="flex items-center gap-1">
                                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1">
-                                            <LogOut size={18} className="text-purple-600" /> Dormant Materials
+                                            <LogOut size={18} className="text-blue-600" /> Dormant Materials
                                         </p>
-                                        <div className="relative group">
+                                        <div className="relative group pointer-events-none">
                                             <Info size={14} className="text-gray-400 cursor-help hover:text-gray-600" />
                                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none w-64">
                                                 <div className="bg-gray-800 text-white text-[10px] px-3 py-2 rounded shadow-lg text-center">
-                                                    Materials not accessed for 30+ days or never accessed (and uploaded 30+ days ago).
+                                                    Materials not accessed for 30+ days or never accessed (and uploaded 30+ days ago). Click to see details.
                                                 </div>
                                                 <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-gray-800"></div>
                                             </div>
@@ -5316,6 +5603,100 @@ const AdminDashboard = () => {
                 </div>
                 )}
             </div>
+
+            {/* Dormant Materials Modal */}
+            {showDormantMaterialsModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        {/* Modal Header with Export Buttons */}
+                        <div className="bg-gradient-to-r from-[#1E74BC] to-[#155a8f] px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <LogOut size={24} className="text-blue-200" />
+                                    Dormant Materials
+                                </h2>
+                                <p className="text-blue-100 text-sm mt-1">
+                                    {dormantMaterialsList.length} material{dormantMaterialsList.length !== 1 ? 's' : ''} not accessed for 30+ days
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleDormantMaterialsExportCSV}
+                                    className="bg-white text-[#1E74BC] px-4 py-2 rounded-lg font-semibold text-sm hover:bg-blue-50 transition-colors flex items-center gap-2"
+                                >
+                                    <Download size={16} />
+                                    CSV
+                                </button>
+                                <button
+                                    onClick={handleDormantMaterialsExportPDF}
+                                    className="bg-white text-[#1E74BC] px-4 py-2 rounded-lg font-semibold text-sm hover:bg-blue-50 transition-colors flex items-center gap-2"
+                                >
+                                    <Download size={16} />
+                                    PDF
+                                </button>
+                                <button
+                                    onClick={() => setShowDormantMaterialsModal(false)}
+                                    className="bg-[#1E74BC] hover:bg-red-600 text-white px-3 py-2 rounded-lg transition-colors ml-2"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {dormantMaterialsList.length > 0 ? (
+                                <div className="space-y-3">
+                                    {dormantMaterialsList.map((material, index) => (
+                                        <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div className="flex-1">
+                                                    <h3 className="font-semibold text-gray-900 text-sm line-clamp-2">
+                                                        {material.title || 'Untitled'}
+                                                    </h3>
+                                                    <div className="grid grid-cols-2 gap-3 mt-3 text-xs text-gray-600">
+                                                        <div>
+                                                            <span className="font-semibold text-gray-700">Uploaded:</span>
+                                                            <p className="text-gray-600 mt-0.5">
+                                                                {material.created_at 
+                                                                    ? new Date(material.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                                                                    : '—'
+                                                                }
+                                                            </p>
+                                                        </div>
+                                                        <div>
+                                                            <span className="font-semibold text-gray-700">Last Accessed:</span>
+                                                            <p className="text-gray-600 mt-0.5">
+                                                                {material.last_accessed
+                                                                    ? new Date(material.last_accessed).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                                                                    : 'Never'
+                                                                }
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="inline-block bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-semibold mb-2">
+                                                        Dormant
+                                                    </span>
+                                                    <div className="bg-gray-100 text-gray-700 px-3 py-1 rounded text-xs font-bold">
+                                                        {material.view_count || 0} views
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <BookOpen size={48} className="text-gray-300 mb-3" />
+                                    <p className="text-gray-500 font-semibold">No dormant materials found</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };
