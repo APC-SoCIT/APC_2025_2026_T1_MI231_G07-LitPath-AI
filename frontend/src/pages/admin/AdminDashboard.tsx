@@ -66,7 +66,7 @@ const AdminDashboard = () => {
         trendingTopics: [],
         topTheses: [],
         usageByCategory: [],
-        ageDistribution: [],
+        genderDistribution: [],
         citationTrends: [],
         citationStats: { total_copies: 0, top_cited: [] },
         trends: [], // for activity trends (monthly/weekly/daily)
@@ -104,7 +104,7 @@ const AdminDashboard = () => {
     const activityTrendsChartRef = useRef(null);
     const citationActivityChartRef = useRef(null);
     const usersByCategoryChartRef = useRef(null);
-    const ageDistributionChartRef = useRef(null);
+    const genderDistributionChartRef = useRef(null);
     const ratingDistributionChartRef = useRef(null);
     const ratingTrendChartRef = useRef(null);
 
@@ -355,16 +355,16 @@ const AdminDashboard = () => {
         } catch (error) { console.error(error); }
     };
 
-    const fetchAgeDistribution = async () => {
+    const fetchGenderDistribution = async () => {
         const { from, to } = getDateRange();
         if (overviewDateFilterType === 'Custom range' && (!from || !to)) return;
         try {
-            const res = await fetch(`${API_BASE_URL}/dashboard/age-distribution/?from=${from}&to=${to}`, {
+            const res = await fetch(`${API_BASE_URL}/dashboard/gender-distribution/?from=${from}&to=${to}`, {
                 headers: apiHeaders(true)
             });
             if (res.ok) {
                 const data = await res.json();
-                setDashboardData(prev => ({ ...prev, ageDistribution: data }));
+                setDashboardData(prev => ({ ...prev, genderDistribution: data }));
             }
         } catch (error) { console.error(error); }
     };
@@ -584,7 +584,7 @@ const AdminDashboard = () => {
             fetchTrendingTopics(),
             fetchTopTheses(),
             fetchUsageByCategory(),
-            fetchAgeDistribution(),
+            fetchGenderDistribution(),
             fetchCitationStats(),
             fetchCitationTrends(),
             fetchTrends()
@@ -1538,11 +1538,11 @@ const AdminDashboard = () => {
             });
             addRow([]);
 
-            // --- AGE DISTRIBUTION ---
-            addRow(["AGE DISTRIBUTION"]);
-            addRow(["Age Group", "User Count", "Percentage (%)"]);
-            dashboardData.ageDistribution.forEach(a => {
-                addRow([a.age, a.count, a.percentage]);
+            // --- GENDER DISTRIBUTION ---
+            addRow(["GENDER DISTRIBUTION"]);
+            addRow(["Gender", "User Count", "Percentage (%)"]);
+            dashboardData.genderDistribution.forEach(g => {
+                addRow([g.gender, g.count, g.percentage]);
             });
             addRow([]);
 
@@ -1843,7 +1843,7 @@ const AdminDashboard = () => {
             yPos = doc.lastAutoTable.finalY + 12;
             
             // ============================================
-            // SECTION 5: AGE DISTRIBUTION — Chart image + table
+            // SECTION 5: GENDER DISTRIBUTION — Chart image + table
             // ============================================
             if (doc.lastAutoTable.finalY > pageHeight - 80) {
                 doc.addPage();
@@ -1853,31 +1853,31 @@ const AdminDashboard = () => {
             doc.setFontSize(14);
             doc.setFont('courier', 'bold');
             doc.setTextColor(30, 116, 188);
-            doc.text(sanitizeText('Age Distribution'), 14, yPos);
+            doc.text(sanitizeText('Gender Distribution'), 14, yPos);
             yPos += 5;
             
             
-            // Age Distribution table
-            const ageData = dashboardData.ageDistribution.map(age => [
-                sanitizeText(age.age),
-                age.count.toLocaleString(),
-                `${age.percentage}%`
+            // Gender Distribution table
+            const genderData = dashboardData.genderDistribution.map(gender => [
+                sanitizeText(gender.gender),
+                gender.count.toLocaleString(),
+                `${gender.percentage}%`
             ]);
             
-            const ageWidths = calculateOptimalTableWidth([2.2, 1.5, 1.3]);
+            const genderWidths = calculateOptimalTableWidth([2.2, 1.5, 1.3]);
             autoTable(doc, {
                 startY: yPos,
-                head: [['Age Range', 'Count', 'Percentage']],
-                body: ageData,
+                head: [['Gender', 'Count', 'Percentage']],
+                body: genderData,
                 theme: 'striped',
                 headStyles: { fillColor: [168, 85, 247], textColor: 255, fontStyle: 'bold', fontSize: 10, cellPadding: 4 },
                 bodyStyles: { fontSize: 9, cellPadding: 3, valign: 'top' },
                 alternateRowStyles: { fillColor: [245, 248, 250] },
-                margin: ageWidths.margin,
+                margin: genderWidths.margin,
                 columnStyles: {
-                    0: { cellWidth: ageWidths.columnWidths[0], fontStyle: 'semibold', halign: 'left' },
-                    1: { cellWidth: ageWidths.columnWidths[1], halign: 'right' },
-                    2: { cellWidth: ageWidths.columnWidths[2], halign: 'right', fontStyle: 'bold' }
+                    0: { cellWidth: genderWidths.columnWidths[0], fontStyle: 'semibold', halign: 'left' },
+                    1: { cellWidth: genderWidths.columnWidths[1], halign: 'right' },
+                    2: { cellWidth: genderWidths.columnWidths[2], halign: 'right', fontStyle: 'bold' }
                 },
                 columnWidth: 'wrap'
             });
@@ -3811,7 +3811,7 @@ const AdminDashboard = () => {
                                         </div>
                                     </div>
 
-                                    {/* COL 3: USERS & AGE DISTRIBUTION (25%) */}
+                                    {/* COL 3: USERS & GENDER DISTRIBUTION (25%) */}
                                     <div className="col-span-12 lg:col-span-3 flex flex-col gap-2">
 
                                         {/* Users by Category */}
@@ -3861,40 +3861,39 @@ const AdminDashboard = () => {
                                             </div>
                                         </div>
 
-                                        {/* Age Distribution */}
-                                        <div ref={ageDistributionChartRef} className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 flex-1">
+                                        {/* Gender Distribution */}
+                                        <div ref={genderDistributionChartRef} className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 flex-1">
                                             <div className="flex items-center gap-1 mb-3">
                                                 <h3 className="font-bold text-gray-700 text-xs uppercase tracking-wide flex items-center gap-2">
-                                                    <Users size={16} className="text-purple-600" /> Age Distribution
+                                                    <Users size={16} className="text-purple-600" /> Gender Distribution
                                                 </h3>
                                                 <div className="relative group">
                                                     <Info size={14} className="text-gray-400 cursor-help hover:text-gray-600" />
-                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none w-48">
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none w-56">
                                                         <div className="bg-gray-800 text-white text-[10px] px-3 py-2 rounded shadow-lg text-center">
-                                                            Age breakdown of users who provided feedback.
+                                                            Gender breakdown of users who registered and submitted feedback.
                                                         </div>
                                                         <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-gray-800"></div>
                                                     </div>
                                                 </div>
                                             </div>
                                             {(() => {
-                                                // Filter to only ages with data, sort by count descending, take top 8
-                                                const agesWithData = dashboardData.ageDistribution
-                                                    .filter(a => a.count > 0)
-                                                    .sort((a, b) => b.count - a.count)
-                                                    .slice(0, 8);
-                                                const total = dashboardData.ageDistribution.reduce((sum, a) => sum + a.count, 0);
+                                                // Filter to only genders with data, sort by count descending
+                                                const gendersWithData = dashboardData.genderDistribution
+                                                    .filter(g => g.count > 0)
+                                                    .sort((a, b) => b.count - a.count);
+                                                const total = dashboardData.genderDistribution.reduce((sum, g) => sum + g.count, 0);
 
                                                 const colorPalette = [
-                                                    '#3b82f6', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#a855f7', '#ec4899', '#6366f1', '#8b5cf6'
+                                                    '#3b82f6', '#ef4444', '#f97316'
                                                 ];
 
-                                                if (agesWithData.length === 0) {
+                                                if (gendersWithData.length === 0) {
                                                     return <p className="text-xs text-gray-400 italic">No records yet</p>;
                                                 }
 
                                                 let cumulativePercent = 0;
-                                                const gradientStops = agesWithData.map((item, i) => {
+                                                const gradientStops = gendersWithData.map((item, i) => {
                                                     const percentage = (item.count / total) * 100;
                                                     const start = cumulativePercent;
                                                     cumulativePercent += percentage;
@@ -3920,13 +3919,13 @@ const AdminDashboard = () => {
                                                         </div>
                                                         {/* Legend */}
                                                         <div className="w-full space-y-1 max-h-40 overflow-y-auto pr-1">
-                                                            {agesWithData.map((item, i) => {
+                                                            {gendersWithData.map((item, i) => {
                                                                 const color = colorPalette[i % colorPalette.length];
                                                                 return (
                                                                     <div key={i} className="flex items-center gap-2 text-[10px]">
                                                                         <span className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
-                                                                        <span className="flex-1 truncate" title={item.age}>
-                                                                            {item.age}
+                                                                        <span className="flex-1 truncate" title={item.gender}>
+                                                                            {item.gender}
                                                                         </span>
                                                                         <span className="font-semibold text-gray-700">
                                                                             {item.count} ({item.percentage}%)

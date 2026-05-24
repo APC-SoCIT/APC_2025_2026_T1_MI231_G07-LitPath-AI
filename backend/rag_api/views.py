@@ -5,7 +5,7 @@ from rest_framework.decorators import api_view
 from django.http import StreamingHttpResponse
 from .rag_service import RAGService
 from .serializers import CSMFeedbackSerializer
-from .models import CSMFeedback, CitationCopy, Material, MaterialView, ResearchHistory, SystemSettings, UserRole
+from .models import CSMFeedback, CitationCopy, Material, MaterialView, ResearchHistory, SystemSettings, UserRole, UserAccount
 from .models_password_reset import PasswordResetToken
 from .password_validation import validate_password_strength
 import secrets
@@ -1773,6 +1773,61 @@ def dashboard_age_distribution(request):
         count = count_dict.get(display, 0)
         data.append({
             'age': display,
+            'count': count,
+            'percentage': round((count / total * 100), 1) if total else 0
+        })
+    return Response(data)
+
+@api_view(['GET'])
+@require_staff_or_admin
+def dashboard_gender_distribution(request):
+    """
+    GET /api/dashboard/gender-distribution/
+    Returns gender distribution and counts from CSMFeedback and UserAccount within the date range.
+    Combines data from both CSM feedback form submissions and user account registrations.
+    """
+    from_date, to_date = parse_date_range(request.GET.get('from'), request.GET.get('to'))
+
+    # Build a dict of gender -> count
+    count_dict = {}
+
+    # Get counts from CSMFeedback database
+    csm_gender_counts = (
+        CSMFeedback.objects
+        .filter(created_at__range=[from_date, to_date], sex__isnull=False)
+        .exclude(sex='')
+        .values('sex')
+        .annotate(count=Count('id'))
+    )
+
+    for item in csm_gender_counts:
+        gender = item['sex']
+        count_dict[gender] = count_dict.get(gender, 0) + item['count']
+
+    # Get counts from UserAccount database (user registrations)
+    user_gender_counts = (
+        UserAccount.objects
+        .filter(created_at__range=[from_date, to_date], sex__isnull=False)
+        .exclude(sex='')
+        .values('sex')
+        .annotate(count=Count('id'))
+    )
+
+    for item in user_gender_counts:
+        gender = item['sex']
+        count_dict[gender] = count_dict.get(gender, 0) + item['count']
+
+    total = sum(count_dict.values()) or 1
+
+    # Define all possible gender options in order
+    gender_options = ['Female', 'Male', 'Prefer not to say']
+
+    # Build result for all gender options
+    data = []
+    for gender in gender_options:
+        count = count_dict.get(gender, 0)
+        data.append({
+            'gender': gender,
             'count': count,
             'percentage': round((count / total * 100), 1) if total else 0
         })
