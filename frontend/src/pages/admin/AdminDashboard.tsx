@@ -3755,14 +3755,14 @@ const AdminDashboard = () => {
                                     </div>
 
                                     {/* COL 2: MOST VIEWED THESES - LEADERBOARD STYLE (50%) */}
-                                    <div className="col-span-12 lg:col-span-6 bg-white rounded-lg shadow-sm border border-gray-100 p-4 flex flex-col overflow-hidden">
+                                    <div className="col-span-12 lg:col-span-6 bg-white rounded-lg shadow-sm border border-gray-100 p-4 flex flex-col overflow-visible">
                                         <div className="flex items-center gap-1 mb-4">
                                             <h3 className="font-bold text-gray-700 text-xs uppercase tracking-wide flex items-center gap-2">
                                                 <BookOpen size={16} className="text-purple-600" /> Most Viewed Theses
                                             </h3>
                                             <div className="relative group">
                                                 <Info size={14} className="text-gray-400 cursor-help hover:text-gray-600" />
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none w-48">
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none w-56">
                                                     <div className="bg-gray-800 text-white text-[10px] px-3 py-2 rounded shadow-lg text-center">
                                                         Ranked by number of views within the selected date range.
                                                     </div>
