@@ -90,6 +90,8 @@ const AdminDashboard = () => {
     const [showFeedbackDateDropdown, setShowFeedbackDateDropdown] = useState(false);
     const feedbackDateDropdownRef = useRef(null);
 
+    const clientTypeFilterOptions = ['Student', 'DOST Employee', 'Other Government Employee', 'Librarian/Library Staff', 'Teaching Personnel', 'Administrative Personnel', 'Researcher', 'Others'];
+
     // ---------- Feedback Manager Client Type & Status Filters ----------
     const [showClientTypeDropdown, setShowClientTypeDropdown] = useState(false);
     const [showStatusDropdown, setShowStatusDropdown] = useState(false);
@@ -871,6 +873,13 @@ const AdminDashboard = () => {
             .filter(fb => isFeedbackInDateRange(fb.created_at));
     };
 
+    const getDisplayClientType = (feedback) => {
+        if (!feedback) return '—';
+        if (feedback.display_client_type) return feedback.display_client_type;
+        if (feedback.client_type === 'Others' && feedback.client_type_other) return feedback.client_type_other;
+        return feedback.client_type || '—';
+    };
+
     
     // ---------- Feedback Manager Export Data to CSV ----------
     const handleFeedbackExportCSV = () => {
@@ -947,7 +956,7 @@ const AdminDashboard = () => {
                 rows.push([
                     escape(new Date(fb.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })),
                     escape(ratingText),
-                    escape(fb.client_type || ''),
+                    escape(getDisplayClientType(fb)),
                     escape(fb.region || ''),
                     fb.admin_category && fb.admin_category.trim() !== '' ? escape(fb.admin_category) : 'N/A',
                     escape(comment),
@@ -1048,7 +1057,7 @@ const AdminDashboard = () => {
                 yPos += 5;
                 doc.text(`Rating: ${ratingText}`, 25, yPos);
                 yPos += 5;
-                doc.text(`Category: ${fb.client_type || 'N/A'}`, 25, yPos);
+                doc.text(`Category: ${getDisplayClientType(fb)}`, 25, yPos);
                 yPos += 5;
                 doc.text(`Region: ${fb.region || 'N/A'}`, 25, yPos);
                 yPos += 5;
@@ -2831,7 +2840,7 @@ const AdminDashboard = () => {
                                             </label>
                                             <div className="grid grid-cols-2 gap-3 bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm">
                                                 <span className="text-gray-600">Client Type:</span>
-                                                <span className="font-medium">{selectedFeedback.client_type || '—'}</span>
+                                                <span className="font-medium">{getDisplayClientType(selectedFeedback)}</span>
                                                 <span className="text-gray-600">Date of Interaction:</span>
                                                 <span className="font-medium">{selectedFeedback.date ? new Date(selectedFeedback.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}</span>
                                                 <span className="text-gray-600">Sex:</span>
@@ -4509,11 +4518,7 @@ const AdminDashboard = () => {
                                                 <div className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-30 min-w-[160px] p-1">
                                                     {[
                                                         { value: 'All', label: 'All Client Types' },
-                                                        { value: 'Student', label: 'Student' },
-                                                        { value: 'Faculty', label: 'Faculty' },
-                                                        { value: 'DOST', label: 'DOST' },
-                                                        { value: 'Librarian', label: 'Librarian' },
-                                                        { value: 'Guest', label: 'Guest' }
+                                                        ...clientTypeFilterOptions.map(option => ({ value: option, label: option }))
                                                     ].map(option => (
                                                         <button
                                                             key={option.value}
@@ -4624,7 +4629,7 @@ const AdminDashboard = () => {
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded text-xs border border-blue-100 font-medium">
-                                                                {fb.client_type || '—'}
+                                                                {getDisplayClientType(fb)}
                                                             </span>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
