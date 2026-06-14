@@ -24,6 +24,13 @@
 * 02 Project Planning 15 Change-Management-Plan
 * 02 Project Planning 16 Human-Resource-Plan
 
+## 03 Execution
+* Sprint 1-3: Sprint Planning meeting output
+* Sprint 1-3: Daily Standup meeting output (individual summaries)
+* Sprint 1-3: Backlog refinement meeting output
+* Sprint 1-3: Sprint Review meeting output
+* Sprint 1-3: Sprint Retrospective meeting output
+
 ## 04 Monitoring And Controlling
 * 04 Project Monitoring and Controlling 02 Project-Status-Report
 
