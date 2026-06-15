@@ -3259,11 +3259,11 @@ const AdminDashboard = () => {
                         <div>
                             <button 
                                 onClick={() => setIsDashboardExpanded(!isDashboardExpanded)}
-                                className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${activeTab === 'overview' || activeTab === 'ratings' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
+                                className={`w-full flex items-center p-3 rounded-lg transition-colors ${isSidebarOpen ? 'justify-between' : 'justify-center'} ${activeTab === 'overview' || activeTab === 'ratings' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
                             >
-                                <div className="flex items-center">
+                                <div className={`flex items-center ${isSidebarOpen ? '' : 'justify-center'}`}>
                                     <LayoutDashboard size={20} className="flex-shrink-0" />
-                                    <span className={`ml-3 text-sm whitespace-nowrap transition-all duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>Dashboard</span>
+                                    <span className={`text-sm whitespace-nowrap transition-all duration-300 ${isSidebarOpen ? 'ml-3 opacity-100' : 'ml-0 opacity-0 w-0 overflow-hidden'}`}>Dashboard</span>
                                 </div>
                                 {isSidebarOpen && (
                                     <ChevronDown 
@@ -3275,23 +3275,23 @@ const AdminDashboard = () => {
                             
                             {/* Dashboard Child Items */}
                             {isDashboardExpanded && (
-                                <div className="ml-4 mt-2 space-y-1 border-l-2 border-gray-200 pl-2">
+                                <div className={`mt-2 space-y-1 ${isSidebarOpen ? 'ml-4 border-l-2 border-gray-200 pl-2' : 'ml-0 border-l-0 pl-0'}`}>
                                     {/* Usage Analytics */}
                                     <button 
                                         onClick={() => handleTabChange('overview')}
-                                        className={`w-full flex items-center p-3 rounded-lg text-sm transition-colors ${activeTab === 'overview' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
+                                        className={`w-full flex items-center p-3 rounded-lg text-sm transition-colors ${isSidebarOpen ? 'justify-start' : 'justify-center'} ${activeTab === 'overview' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
                                     >
                                         <TrendingUp size={18} className="flex-shrink-0" />
-                                        <span className={`ml-3 whitespace-nowrap transition-all duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>Usage Analytics</span>
+                                        <span className={`whitespace-nowrap transition-all duration-300 ${isSidebarOpen ? 'ml-3 opacity-100' : 'ml-0 opacity-0 w-0 overflow-hidden'}`}>Usage Analytics</span>
                                     </button>
                                     
                                     {/* Material Ratings */}
                                     <button 
                                         onClick={() => handleTabChange('ratings')}
-                                        className={`w-full flex items-center p-3 rounded-lg text-sm transition-colors ${activeTab === 'ratings' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
+                                        className={`w-full flex items-center p-3 rounded-lg text-sm transition-colors ${isSidebarOpen ? 'justify-start' : 'justify-center'} ${activeTab === 'ratings' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
                                     >
                                         <Star size={18} className="flex-shrink-0" />
-                                        <span className={`ml-3 whitespace-nowrap transition-all duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>Material Ratings</span>
+                                        <span className={`whitespace-nowrap transition-all duration-300 ${isSidebarOpen ? 'ml-3 opacity-100' : 'ml-0 opacity-0 w-0 overflow-hidden'}`}>Material Ratings</span>
                                     </button>
                                 </div>
                             )}
@@ -3300,10 +3300,10 @@ const AdminDashboard = () => {
                         {/* Feedback Manager - Top Level */}
                         <button 
                             onClick={() => handleTabChange('feedback')} 
-                            className={`w-full flex items-center p-3 rounded-lg transition-colors ${activeTab === 'feedback' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
+                            className={`w-full flex items-center p-3 rounded-lg transition-colors ${isSidebarOpen ? 'justify-start' : 'justify-center'} ${activeTab === 'feedback' ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
                         >
                             <MessageSquare size={20} className="flex-shrink-0" />
-                            <span className={`ml-3 text-sm whitespace-nowrap transition-all duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>Feedback Manager</span>
+                            <span className={`text-sm whitespace-nowrap transition-all duration-300 ${isSidebarOpen ? 'ml-3 opacity-100' : 'ml-0 opacity-0 w-0 overflow-hidden'}`}>Feedback Manager</span>
                         </button>
                     </nav>
                     <div className={`p-4 border-t border-gray-100 text-xs text-gray-400 text-center whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 h-0 p-0'}`}>
