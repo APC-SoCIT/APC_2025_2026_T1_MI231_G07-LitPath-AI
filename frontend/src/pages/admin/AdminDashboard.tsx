@@ -9,7 +9,7 @@ import {
     Clock, Bookmark, AlertCircle, TrendingUp, BookOpen, CheckCircle,
     X, EyeOff, Menu, Calendar, Users, ChevronLeft, ChevronRight,
     Trophy, Medal, Briefcase, GraduationCap, BarChart3, Copy, Info,
-    User, Key, RefreshCw, Download, Home
+    User, Key, RefreshCw, Download, Home, Archive
 } from "lucide-react";
 import dostLogo from "../../assets/images/dost-logo.png";
 import { API_BASE_URL, apiHeaders } from '../../services/api';
@@ -155,6 +155,16 @@ const AdminDashboard = () => {
     // ---------- Dormant Materials Modal ----------
     const [showDormantMaterialsModal, setShowDormantMaterialsModal] = useState(false);
     const [dormantMaterialsList, setDormantMaterialsList] = useState([]);
+    const [showVotesModal, setShowVotesModal] = useState(false);
+    const [showHelpfulModal, setShowHelpfulModal] = useState(false);
+    const [showNotRelevantModal, setShowNotRelevantModal] = useState(false);
+    const [showRelevanceScoreModal, setShowRelevanceScoreModal] = useState(false);
+    const [showRatingTrendDetailModal, setShowRatingTrendDetailModal] = useState(false);
+    const [selectedTrendBucket, setSelectedTrendBucket] = useState(null);
+    const [showTopRatedModal, setShowTopRatedModal] = useState(false);
+    const [showArchiveConfirmModal, setShowArchiveConfirmModal] = useState(false);
+    const [archiveTargetMaterial, setArchiveTargetMaterial] = useState(null);
+    const [hoveredSegment, setHoveredSegment] = useState<"helpful" | "notRelevant" | null>(null);
 
     // ---------- Feedback Details Modal ----------
     const [selectedFeedback, setSelectedFeedback] = useState(null);
@@ -1178,23 +1188,78 @@ const AdminDashboard = () => {
     const getTopMaterials = (ratingsArray) => {
         const counts = {};
         ratingsArray.forEach(r => {
-            if (r.relevant === true) {
-                const title = r.material_title || r.document_file || 'Unknown';
-                counts[title] = (counts[title] || 0) + 1;
-            }
+            const title = r.material_title || r.document_file || r.document_name || r.title || r.thesis_title || 'Unknown';
+            counts[title] = (counts[title] || 0) + 1;
         });
         return Object.entries(counts)
             .sort(([, a], [, b]) => b - a)
-            .slice(0, 5)
             .map(([title, count]) => ({ title, count }));
     };
 
+    const getDonutSectorPath = (startAngle, endAngle, outerRadius = 15.5, innerRadius = 8) => {
+        const mapCssAngleToSvg = (cssAngle) => ((cssAngle + 270) % 360);
+        const degToRad = (angle) => (Math.PI / 180) * angle;
+        const startRad = degToRad(mapCssAngleToSvg(startAngle));
+        const endRad = degToRad(mapCssAngleToSvg(endAngle));
+        const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
+        const outerStartX = 16 + outerRadius * Math.cos(startRad);
+        const outerStartY = 16 + outerRadius * Math.sin(startRad);
+        const outerEndX = 16 + outerRadius * Math.cos(endRad);
+        const outerEndY = 16 + outerRadius * Math.sin(endRad);
+        const innerStartX = 16 + innerRadius * Math.cos(endRad);
+        const innerStartY = 16 + innerRadius * Math.sin(endRad);
+        const innerEndX = 16 + innerRadius * Math.cos(startRad);
+        const innerEndY = 16 + innerRadius * Math.sin(startRad);
+
+        return `M ${outerStartX} ${outerStartY} A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${outerEndX} ${outerEndY} L ${innerStartX} ${innerStartY} A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${innerEndX} ${innerEndY} Z`;
+    };
+
+    const getVoteSourceName = (vote) => {
+        return vote.material_title || vote.document_file || vote.document_name || vote.title || vote.thesis_title || 'Unknown material';
+    };
+
+    const getVoteMaterialTitle = (vote) => getVoteSourceName(vote);
+
+    const getRelevanceDetailsByMaterial = () => {
+        const grouped = {};
+        filteredRatings.forEach((rating) => {
+            const title = getVoteMaterialTitle(rating);
+            if (!title) return;
+            if (!grouped[title]) {
+                grouped[title] = { title, helpful: 0, notRelevant: 0, total: 0 };
+            }
+            if (rating.relevant === true) grouped[title].helpful += 1;
+            if (rating.relevant === false) grouped[title].notRelevant += 1;
+            if (rating.relevant === true || rating.relevant === false) grouped[title].total += 1;
+        });
+
+        return Object.values(grouped)
+            .filter(item => item.total > 0)
+            .map(item => {
+                const relevance = item.total > 0 ? (item.helpful / item.total) * 100 : 0;
+                return {
+                    ...item,
+                    relevance: relevance,
+                    relevanceRounded: Math.round(relevance),
+                    needsReview: item.notRelevant > 0 || relevance < 70
+                };
+            })
+            .sort((a, b) => a.relevance - b.relevance || a.title.localeCompare(b.title));
+    };
+
     // Then counts that depend on filteredRatings
-    const helpfulCount = filteredRatings.filter(r => r.relevant === true).length;
-    const notRelevantCount = filteredRatings.filter(r => r.relevant === false).length;
+    const helpfulRatings = filteredRatings.filter(r => r.relevant === true);
+    const notRelevantRatings = filteredRatings.filter(r => r.relevant === false);
+    const helpfulCount = helpfulRatings.length;
+    const helpfulMaterialsByTitle = getTopMaterials(helpfulRatings);
+    const notRelevantMaterialsByTitle = getTopMaterials(notRelevantRatings);
+    const notRelevantCount = notRelevantRatings.length;
     const totalVotes = helpfulCount + notRelevantCount;
     const helpfulPercent = totalVotes ? (helpfulCount / totalVotes) * 100 : 0;
-
+    const helpfulAngle = helpfulPercent * 3.6;
+    const relevanceDetails = getRelevanceDetailsByMaterial();
+    const topRatedMaterials = getRelevanceDetailsByMaterial()
+        .sort((a, b) => b.helpful - a.helpful || a.title.localeCompare(b.title));
 
     // Returns { start, end } as Date objects for the current filter
     const getCurrentDateRange = () => {
@@ -1458,6 +1523,8 @@ const AdminDashboard = () => {
 
         // Return the data in the format expected by the chart
         return buckets.map(b => ({
+            start: b.start,
+            end: b.end,
             displayLabel: b.label,
             tooltipRange: b.tooltip,
             avgScore: b.total > 0 ? (b.helpful / b.total) * 100 : 0,
@@ -2568,6 +2635,87 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleOpenVotesModal = () => {
+        setShowVotesModal(true);
+    };
+
+    const handleOpenHelpfulModal = () => {
+        setShowHelpfulModal(true);
+    };
+
+    const handleOpenNotRelevantModal = () => {
+        setShowNotRelevantModal(true);
+    };
+
+    const handleOpenRelevanceScoreModal = () => {
+        setShowRelevanceScoreModal(true);
+    };
+
+    const handleOpenTopRatedModal = () => {
+        setShowTopRatedModal(true);
+    };
+
+    const handleRequestArchive = (material) => {
+        setArchiveTargetMaterial(material);
+        setShowArchiveConfirmModal(true);
+    };
+
+    const handleConfirmArchivePlaceholder = () => {
+        // UI-only placeholder: actual backend archive endpoint not implemented
+        setShowArchiveConfirmModal(false);
+        setArchiveTargetMaterial(null);
+        showToast('Archive feature coming soon', 'info');
+    };
+
+    const handleCancelArchive = () => {
+        setShowArchiveConfirmModal(false);
+        setArchiveTargetMaterial(null);
+    };
+
+    const formatVoteDate = (dateString) => {
+        try {
+            return new Date(dateString).toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+        } catch {
+            return dateString;
+        }
+    };
+
+    const getVoteTypeLabel = (vote) => {
+        if (vote.relevant === true) return 'Helpful';
+        if (vote.relevant === false) return 'Not Relevant';
+        return 'Unknown';
+    };
+
+    const getVoteComment = (vote) => {
+        return vote.message_comment || vote.comment || vote.note || vote.notes || '—';
+    };
+
+    const getTrendBucketVotes = (bucket) => {
+        if (!bucket) return [];
+        return filteredRatings
+            .filter(r => {
+                const d = new Date(r.created_at);
+                return d >= bucket.start && d <= bucket.end;
+            })
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    };
+
+    const handleOpenTrendDetailModal = (bucket) => {
+        setSelectedTrendBucket(bucket);
+        setShowRatingTrendDetailModal(true);
+    };
+
+    const handleCloseTrendDetailModal = () => {
+        setShowRatingTrendDetailModal(false);
+        setSelectedTrendBucket(null);
+    };
+
     const handleDormantMaterialsExportCSV = () => {
         try {
             if (dormantMaterialsList.length === 0) {
@@ -2761,6 +2909,121 @@ const AdminDashboard = () => {
         } catch (error) {
             console.error("Dormant materials PDF export failed:", error);
             showToast('Failed to export dormant materials to PDF. Please try again.', 'error');
+        }
+    };
+
+    const handleTopRatedExportCSV = () => {
+        try {
+            if (!topRatedMaterials || topRatedMaterials.length === 0) {
+                showToast('No top rated materials to export', 'error');
+                return;
+            }
+
+            const rows = [];
+            const exportDate = new Date().toLocaleDateString();
+
+            const escape = (text) => {
+                if (text === null || text === undefined) return '';
+                const str = String(text);
+                return `"${str.replace(/"/g, '""')}"`;
+            };
+
+            const getLocalDateString = () => {
+                const d = new Date();
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+
+            // Header
+            rows.push(["LITPATH AI - TOP RATED MATERIALS REPORT"]);
+            rows.push(["Export Date", exportDate]);
+            rows.push(["Total Materials", topRatedMaterials.length]);
+            rows.push([]);
+
+            // Columns
+            rows.push(["Title", "Helpful Votes", "Not Relevant Votes", "Total Votes", "Relevance %"]);
+
+            topRatedMaterials.forEach(item => {
+                rows.push([
+                    escape(item.title || ''),
+                    escape(item.helpful || 0),
+                    escape(item.notRelevant || 0),
+                    escape(item.total || 0),
+                    escape(item.relevanceRounded != null ? item.relevanceRounded + '%' : '')
+                ]);
+            });
+
+            const csvContent = rows.map(row => row.join(',')).join('\r\n');
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `LitPathAI_TopRatedMaterials_${getLocalDateString()}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showToast('Top rated materials exported to CSV successfully!', 'success');
+        } catch (error) {
+            console.error('Top rated CSV export failed:', error);
+            showToast('Failed to export top rated materials. Please try again.', 'error');
+        }
+    };
+
+    const handleTopRatedExportPDF = async () => {
+        try {
+            if (!topRatedMaterials || topRatedMaterials.length === 0) {
+                showToast('No top rated materials to export', 'error');
+                return;
+            }
+
+            const { jsPDF } = await import('jspdf');
+            const { default: autoTable } = await import('jspdf-autotable');
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.width;
+            let yPos = 20;
+
+            const sanitizeText = (text) => {
+                if (!text) return '';
+                return String(text)
+                    .replace(/º/g, 'o')
+                    .replace(/ª/g, 'a')
+                    .replace(/°/g, 'o')
+                    .replace(/²/g, '^2')
+                    .replace(/³/g, '^3')
+                    .replace(/¹/g, '^1');
+            };
+
+            doc.setFontSize(12);
+            doc.text(sanitizeText('LITPATH AI - TOP RATED MATERIALS REPORT'), pageWidth / 2, yPos, { align: 'center' });
+            yPos += 8;
+            doc.text(`Total Materials: ${topRatedMaterials.length}`, 14, yPos);
+            yPos += 8;
+
+            const body = topRatedMaterials.map(item => [
+                item.title || '',
+                String(item.helpful || 0),
+                String(item.notRelevant || 0),
+                String(item.total || 0),
+                String(item.relevanceRounded != null ? item.relevanceRounded + '%' : '')
+            ]);
+
+            autoTable(doc, {
+                startY: yPos,
+                head: [[ 'Title', 'Helpful', 'Not Relevant', 'Total', 'Relevance %' ]],
+                body: body,
+                styles: { fontSize: 9 },
+                headStyles: { fillColor: [30,116,188] }
+            });
+
+            doc.save(`LitPathAI_TopRatedMaterials_${new Date().toISOString().slice(0,10)}.pdf`);
+            showToast('Top rated materials exported to PDF successfully!', 'success');
+        } catch (error) {
+            console.error('Top rated PDF export failed:', error);
+            showToast('Failed to export top rated materials to PDF. Please try again.', 'error');
         }
     };
 
@@ -4944,7 +5207,18 @@ const AdminDashboard = () => {
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-3">
                                 
                                 {/* Total Votes */}
-                                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={handleOpenVotesModal}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            handleOpenVotesModal();
+                                        }
+                                    }}
+                                    className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-blue-200 transition-all group"
+                                >
                                     <div className="flex items-center gap-1">
                                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1">
                                             <MessageSquare size={18} className="text-blue-600" /> Total Votes
@@ -4960,6 +5234,7 @@ const AdminDashboard = () => {
                                         </div>
                                     </div>
                                     <p className="text-2xl font-bold text-gray-900 mt-2">{formatNumber(currentVotes)}</p>
+                                    <p className="text-xs text-gray-500 mt-1">Total number of votes for both helpful and not relevant</p>
                                     {voteTrend !== null && (
                                         <div className="flex items-center text-xs text-gray-500 mt-1">
                                             <span className={`font-bold mr-1 ${voteTrend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -4968,10 +5243,24 @@ const AdminDashboard = () => {
                                             from {trendLabel}
                                         </div>
                                     )}
+                                    <div className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity text-xs font-semibold text-blue-600">
+                                        Click to view
+                                    </div>
                                 </div>
 
                                 {/* Relevance Score */}
-                                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={handleOpenRelevanceScoreModal}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            handleOpenRelevanceScoreModal();
+                                        }
+                                    }}
+                                    className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-blue-200 transition-all group"
+                                >
                                     <div className="flex items-center gap-1">
                                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1">
                                             <Star size={18} className="text-yellow-500" /> Relevance Score
@@ -4988,15 +5277,32 @@ const AdminDashboard = () => {
                                     </div>
                                     <div className="flex items-baseline gap-2 mt-2">
                                         <p className="text-2xl font-bold text-gray-900">{getRelevanceScore()}%</p>
-                                        <span className="text-xs text-gray-400">satisfaction</span>
+                                        <span className="text-xs text-gray-400">helpful vote rate</span>
                                     </div>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        {helpfulCount} relevant material vote{helpfulCount !== 1 ? 's' : ''}
+                                    </p>
                                     <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2">
                                         <div className="bg-gradient-to-r from-yellow-400 to-orange-500 h-1.5 rounded-full" style={{ width: `${getRelevanceScore()}%` }}></div>
+                                    </div>
+                                    <div className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity text-xs font-semibold text-blue-600">
+                                        Click to view
                                     </div>
                                 </div>
 
                                 {/* Helpful */}
-                                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={handleOpenHelpfulModal}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            handleOpenHelpfulModal();
+                                        }
+                                    }}
+                                    className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-blue-200 transition-all group relative"
+                                >
                                     <div className="flex items-center gap-1">
                                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1">
                                             <ThumbsUp size={18} className="text-green-600" /> Helpful
@@ -5005,16 +5311,19 @@ const AdminDashboard = () => {
                                             <Info size={14} className="text-gray-400 cursor-help hover:text-gray-600" />
                                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none w-48">
                                                 <div className="bg-gray-800 text-white text-[10px] px-3 py-2 rounded shadow-lg text-center">
-                                                    Number of materials rated as relevant.
+                                                    Same material voted as relevant.
                                                 </div>
                                                 <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-gray-800"></div>
                                             </div>
                                         </div>
                                     </div>
                                     <p className="text-2xl font-bold text-green-600 mt-2">
-                                        {filteredRatings.filter(r => r.relevant === true).length}
+                                        {helpfulCount}
                                     </p>
-                                    <p className="text-xs text-gray-400 mt-1">Rated as relevant</p>
+                                    <p className="text-xs text-gray-400 mt-1">Same material voted as relevant</p>
+                                    <div className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity text-xs font-semibold text-blue-600">
+                                        Click to view
+                                    </div>
                                 </div>
 
                                 {/* Dormant Materials */}
@@ -5030,7 +5339,7 @@ const AdminDashboard = () => {
                                             handleOpenDormantMaterialsModal();
                                         }
                                     }}
-                                    className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-blue-200 transition-all"
+                                    className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-blue-200 transition-all group relative"
                                 >
                                     <div className="flex items-center gap-1">
                                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1">
@@ -5048,6 +5357,9 @@ const AdminDashboard = () => {
                                     </div>
                                     <p className="text-2xl font-bold text-gray-900 mt-2">{formatNumber(dormantCount)}</p>
                                     <p className="text-xs text-gray-400 mt-1">Dormant (30+ days)</p>
+                                    <div className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity text-xs font-semibold text-blue-600">
+                                        Click to view
+                                    </div>
                                 </div>
                             </div>
 
@@ -5055,12 +5367,26 @@ const AdminDashboard = () => {
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
 
                                 {/* 1. Top Rated Materials */}
-                                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col h-full">
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={handleOpenTopRatedModal}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            handleOpenTopRatedModal();
+                                        }
+                                    }}
+                                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col h-full cursor-pointer hover:shadow-md hover:border-blue-200 transition-all group"
+                                >
                                     <div className="flex items-center gap-1.5 mb-2 border-b border-gray-100 pb-3">
-                                        <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
-                                            <ThumbsUp size={16} className="text-blue-600" />
-                                            Top Rated Materials
-                                        </h3>
+                                        <div>
+                                            <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                                                <ThumbsUp size={16} className="text-blue-600" />
+                                                Top Rated Materials
+                                            </h3>
+                                            <p className="text-sm text-gray-500 italic mt-1">Click to view full ranked list</p>
+                                        </div>
                                         <div className="relative group">
                                             <Info size={14} className="text-gray-400 cursor-help hover:text-gray-600" />
                                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none w-64">
@@ -5171,13 +5497,22 @@ const AdminDashboard = () => {
                                                                             Dormant
                                                                         </span>
                                                                     )}
+                                                                    
                                                                 </div>
                                                             </div>
                                                         </div>
                                                         <div className="flex-shrink-0 text-right pl-2 mt-0.5">
-                                                            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] font-bold border border-gray-200 inline-block">
+                                                            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] font-bold border border-gray-200 inline-block group-hover:hidden">
                                                                 {item.view_count || 0} views
                                                             </span>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleRequestArchive(item); }}
+                                                                title="Archive material"
+                                                                className="hidden group-hover:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500 text-white text-xs font-semibold"
+                                                            >
+                                                                <Archive size={14} />
+                                                                Archive
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -5216,29 +5551,90 @@ const AdminDashboard = () => {
                                                 {/* Donut with centered total */}
                                                 <div className="relative w-32 h-32 flex-shrink-0">
                                                     <div
-                                                        className="w-full h-full rounded-full"
+                                                        className="w-full h-full rounded-full transition"
                                                         style={{
                                                             background: `conic-gradient(#22c55e 0% ${helpfulPercent}%, #ef4444 ${helpfulPercent}% 100%)`,
                                                             mask: 'radial-gradient(circle at 50% 50%, transparent 50%, black 51%)',
-                                                            WebkitMask: 'radial-gradient(circle at 50% 50%, transparent 50%, black 51%)'
+                                                            WebkitMask: 'radial-gradient(circle at 50% 50%, transparent 50%, black 51%)',
+                                                            filter: hoveredSegment === 'helpful'
+                                                                ? 'brightness(1.04) drop-shadow(0 0 14px rgba(34,197,94,0.18))'
+                                                                : hoveredSegment === 'notRelevant'
+                                                                    ? 'brightness(1.04) drop-shadow(0 0 14px rgba(239,68,68,0.18))'
+                                                                    : 'none',
+                                                            transform: hoveredSegment ? 'scale(1.02)' : 'none'
                                                         }}
                                                     />
-                                                    <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-700">
+                                                    {hoveredSegment && (
+                                                        <div
+                                                            className="absolute inset-0 rounded-full pointer-events-none"
+                                                            style={{
+                                                                background: hoveredSegment === 'helpful'
+                                                                    ? `conic-gradient(rgba(34,197,94,0.28) 0% ${helpfulPercent}%, transparent ${helpfulPercent}% 100%)`
+                                                                    : `conic-gradient(transparent 0% ${helpfulPercent}%, rgba(239,68,68,0.28) ${helpfulPercent}% 100%)`,
+                                                                mask: 'radial-gradient(circle at 50% 50%, transparent 50%, black 51%)',
+                                                                WebkitMask: 'radial-gradient(circle at 50% 50%, transparent 50%, black 51%)',
+                                                                boxShadow: hoveredSegment === 'helpful'
+                                                                    ? '0 0 0 2px rgba(34,197,94,0.12) inset'
+                                                                    : '0 0 0 2px rgba(239,68,68,0.12) inset'
+                                                            }}
+                                                        />
+                                                    )}
+                                                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 32 32" aria-hidden="true">
+                                                        {helpfulPercent > 0 && (
+                                                            <path
+                                                                d={getDonutSectorPath(0, helpfulAngle)}
+                                                                fill="transparent"
+                                                                stroke="transparent"
+                                                                pointerEvents="all"
+                                                                onMouseEnter={() => setHoveredSegment('helpful')}
+                                                                onMouseLeave={() => setHoveredSegment(null)}
+                                                                onClick={handleOpenHelpfulModal}
+                                                                style={{ cursor: 'pointer' }}
+                                                            />
+                                                        )}
+                                                        {helpfulPercent < 100 && (
+                                                            <path
+                                                                d={getDonutSectorPath(helpfulAngle, 360)}
+                                                                fill="transparent"
+                                                                stroke="transparent"
+                                                                pointerEvents="all"
+                                                                onMouseEnter={() => setHoveredSegment('notRelevant')}
+                                                                onMouseLeave={() => setHoveredSegment(null)}
+                                                                onClick={handleOpenNotRelevantModal}
+                                                                style={{ cursor: 'pointer' }}
+                                                            />
+                                                        )}
+                                                    </svg>
+                                                    <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-700 pointer-events-none">
                                                         {filteredRatings.length} total
                                                     </div>
                                                 </div>
                                                 {/* Legend */}
                                                 <div className="flex-1 space-y-1 px-6">
-                                                    <div className="flex items-center gap-2 text-[10px]">
+                                                    <button
+                                                        type="button"
+                                                        className={`flex items-center gap-2 text-[10px] w-full rounded-lg px-2 py-2 transition ${hoveredSegment === 'helpful' ? 'bg-slate-200' : 'hover:bg-slate-100'}`}
+                                                        onMouseEnter={() => setHoveredSegment('helpful')}
+                                                        onMouseLeave={() => setHoveredSegment(null)}
+                                                        onClick={handleOpenHelpfulModal}
+                                                        aria-label="Show helpful materials"
+                                                    >
                                                         <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#22c55e' }}></span>
-                                                        <span className="flex-1">Helpful</span>
+                                                        <span className="flex-1 text-left">Helpful</span>
                                                         <span className="font-semibold text-gray-700">{helpfulCount} ({helpfulPercent.toFixed(1)}%)</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 text-[10px]">
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={`flex items-center gap-2 text-[10px] w-full rounded-lg px-2 py-2 transition ${hoveredSegment === 'notRelevant' ? 'bg-slate-200' : 'hover:bg-slate-100'}`}
+                                                        onMouseEnter={() => setHoveredSegment('notRelevant')}
+                                                        onMouseLeave={() => setHoveredSegment(null)}
+                                                        onClick={handleOpenNotRelevantModal}
+                                                        aria-label="Show not relevant materials"
+                                                    >
                                                         <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ef4444' }}></span>
-                                                        <span className="flex-1">Not relevant</span>
+                                                        <span className="flex-1 text-left">Not relevant</span>
                                                         <span className="font-semibold text-gray-700">{notRelevantCount} {(100 - helpfulPercent).toFixed(1)}%</span>
-                                                    </div>
+                                                    </button>
                                                 </div>
                                             </div>
                                         ) : (
@@ -5361,14 +5757,15 @@ const AdminDashboard = () => {
                                                                     }
 
                                                                     return (
-                                                                        <div key={`hover-${i}`} className="flex-1 relative group cursor-default h-full flex justify-center hover:z-50">
+                                                                        <div key={`hover-${i}`} className="flex-1 relative group cursor-pointer h-full flex justify-center hover:z-50">
                                                                             {/* Ghost hover highlight */}
                                                                             <div className="absolute inset-y-0 w-[80%] max-w-[32px] z-0 bg-blue-500/0 group-hover:bg-blue-500/10 transition-colors rounded-sm"></div>
 
                                                                             {/* Dot and tooltip anchor */}
                                                                             <div
-                                                                                className="absolute z-20 flex justify-center items-center"
+                                                                                className="absolute z-20 flex justify-center items-center cursor-pointer"
                                                                                 style={{ top: `${p.y}%`, transform: 'translateY(-50%)' }}
+                                                                                onClick={() => handleOpenTrendDetailModal(p)}
                                                                             >
                                                                                 <div className={`w-2.5 h-2.5 bg-white border-[2px] border-blue-600 rounded-full transition-transform group-hover:scale-[1.4] shadow-sm ${p.avgScore === 0 ? 'opacity-30 group-hover:opacity-100' : 'opacity-100'}`} />
 
@@ -5691,6 +6088,432 @@ const AdminDashboard = () => {
                                 <div className="flex flex-col items-center justify-center py-12">
                                     <BookOpen size={48} className="text-gray-300 mb-3" />
                                     <p className="text-gray-500 font-semibold">No dormant materials found</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Helpful Materials Modal */}
+            {showHelpfulModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="bg-gradient-to-r from-[#1E74BC] to-[#155a8f] px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <ThumbsUp size={24} className="text-green-200" />
+                                    Helpful Materials
+                                </h2>
+                                <p className="text-blue-100 text-sm mt-1">
+                                    {helpfulRatings.length} helpful vote{helpfulRatings.length !== 1 ? 's' : ''} in the selected period
+                                </p>
+                            </div>
+                            <button
+                                title="Close helpful materials modal"
+                                onClick={() => setShowHelpfulModal(false)}
+                                className="bg-[#1E74BC] hover:bg-red-600 text-white px-3 py-2 rounded-lg transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {helpfulMaterialsByTitle.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Material / Thesis</th>
+                                                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Helpful Votes</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {helpfulMaterialsByTitle.map((item, index) => (
+                                                <tr key={index} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3 text-sm text-gray-700 max-w-xs break-words">{item.title}</td>
+                                                    <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">{item.count}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <ThumbsUp size={48} className="text-gray-300 mb-3" />
+                                    <p className="text-gray-500 font-semibold">No helpful materials found</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Not Relevant Materials Modal */}
+            {showNotRelevantModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="bg-gradient-to-r from-[#1E74BC] to-[#155a8f] px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <ThumbsDown size={24} className="text-red-200" />
+                                    Not Relevant Materials
+                                </h2>
+                                <p className="text-blue-100 text-sm mt-1">
+                                    {notRelevantRatings.length} not relevant vote{notRelevantRatings.length !== 1 ? 's' : ''} in the selected period
+                                </p>
+                            </div>
+                            <button
+                                title="Close not relevant materials modal"
+                                onClick={() => setShowNotRelevantModal(false)}
+                                className="bg-[#1E74BC] hover:bg-red-600 text-white px-3 py-2 rounded-lg transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {notRelevantMaterialsByTitle.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Material / Thesis</th>
+                                                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Not Relevant Votes</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {notRelevantMaterialsByTitle.map((item, index) => (
+                                                <tr key={index} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3 text-sm text-gray-700 max-w-xs break-words">{item.title}</td>
+                                                    <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">{item.count}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <ThumbsDown size={48} className="text-gray-300 mb-3" />
+                                    <p className="text-gray-500 font-semibold">No not relevant materials found</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Rating Trend Detail Modal */}
+            {showRatingTrendDetailModal && selectedTrendBucket && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="bg-gradient-to-r from-[#1E74BC] to-[#155a8f] px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <TrendingUp size={24} className="text-blue-200" />
+                                    {selectedTrendBucket.tooltipRange} — Rating Detail
+                                </h2>
+                                <p className="text-blue-100 text-sm mt-1">
+                                    {selectedTrendBucket.count > 0 ? ((selectedTrendBucket.helpful / selectedTrendBucket.count) * 100).toFixed(1) : 0}% helpful vote rate — {selectedTrendBucket.helpful} of {selectedTrendBucket.count} votes
+                                </p>
+                            </div>
+                            <button
+                                title="Close rating detail modal"
+                                onClick={handleCloseTrendDetailModal}
+                                className="bg-[#1E74BC] hover:bg-red-600 text-white px-3 py-2 rounded-lg transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {getTrendBucketVotes(selectedTrendBucket).length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Material / Thesis</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Vote</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Comment</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {getTrendBucketVotes(selectedTrendBucket).map((vote, index) => (
+                                                <tr key={index} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3 text-sm text-gray-600">{formatVoteDate(vote.created_at)}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-700 max-w-xs break-words">{getVoteSourceName(vote)}</td>
+                                                    <td className="px-4 py-3 text-sm font-semibold">
+                                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${vote.relevant === true ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                            {getVoteTypeLabel(vote)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-gray-700 max-w-xs break-words">{getVoteComment(vote)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <MessageSquare size={48} className="text-gray-300 mb-3" />
+                                    <p className="text-gray-500 font-semibold">No votes recorded for this period</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Relevance Score Details Modal */}
+            {showRelevanceScoreModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="bg-gradient-to-r from-[#1E74BC] to-[#155a8f] px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <Star size={24} className="text-yellow-200" />
+                                    Relevance Score Details
+                                </h2>
+                                <p className="text-blue-100 text-sm mt-1">
+                                    {getRelevanceScore()}% helpful vote rate — {helpfulCount} of {totalVotes} votes
+                                </p>
+                            </div>
+                            <button
+                                title="Close relevance score details modal"
+                                onClick={() => setShowRelevanceScoreModal(false)}
+                                className="bg-[#1E74BC] hover:bg-red-600 text-white px-3 py-2 rounded-lg transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {relevanceDetails.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Material / Thesis</th>
+                                                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Helpful</th>
+                                                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Not Relevant</th>
+                                                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Total Votes</th>
+                                                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Relevance %</th>
+                                                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {relevanceDetails.map((item, index) => (
+                                                <tr key={`${item.title}-${index}`} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3 text-sm text-gray-700 max-w-xs break-words">{item.title}</td>
+                                                    <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">{item.helpful}</td>
+                                                    <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">{item.notRelevant}</td>
+                                                    <td className="px-4 py-3 text-sm text-right text-gray-700">{item.total}</td>
+                                                    <td className="px-4 py-3 text-sm text-right text-gray-700">{item.relevanceRounded}%</td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        {item.needsReview ? (
+                                                            <span className="inline-block bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-semibold">
+                                                                Needs Review
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-block bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold">
+                                                                Good
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <Star size={48} className="text-gray-300 mb-3" />
+                                    <p className="text-gray-500 font-semibold">No materials with votes found</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Top Rated Materials Modal */}
+            {showTopRatedModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="bg-gradient-to-r from-[#1E74BC] to-[#155a8f] px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <ThumbsUp size={24} className="text-blue-200" />
+                                    Top Rated Materials
+                                </h2>
+                                <p className="text-blue-100 text-sm mt-1">
+                                    Ranked by helpful votes — full list
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleTopRatedExportCSV}
+                                    className="bg-white text-[#1E74BC] px-4 py-2 rounded-lg font-semibold text-sm hover:bg-blue-50 transition-colors flex items-center gap-2"
+                                >
+                                    <Download size={16} />
+                                    CSV
+                                </button>
+                                <button
+                                    onClick={handleTopRatedExportPDF}
+                                    className="bg-white text-[#1E74BC] px-4 py-2 rounded-lg font-semibold text-sm hover:bg-blue-50 transition-colors flex items-center gap-2"
+                                >
+                                    <Download size={16} />
+                                    PDF
+                                </button>
+                                <button
+                                    title="Close top rated materials modal"
+                                    onClick={() => setShowTopRatedModal(false)}
+                                    className="bg-[#1E74BC] hover:bg-red-600 text-white px-3 py-2 rounded-lg transition-colors ml-2"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {topRatedMaterials.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Rank</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Material / Thesis</th>
+                                                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Helpful Votes</th>
+                                                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Not Relevant Votes</th>
+                                                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Relevance %</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {topRatedMaterials.map((item, index) => (
+                                                <tr key={`${item.title}-${index}`} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3 text-sm text-gray-700 font-medium">{index + 1}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-700 break-words">{item.title}</td>
+                                                    <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">{item.helpful}</td>
+                                                    <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">{item.notRelevant}</td>
+                                                    <td className="px-4 py-3 text-sm text-right text-gray-700">{item.relevanceRounded}%</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <ThumbsUp size={48} className="text-gray-300 mb-3" />
+                                    <p className="text-gray-500 font-semibold">No materials with votes found</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Archive Confirmation Modal (UI-only placeholder) */}
+            {showArchiveConfirmModal && archiveTargetMaterial && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-2xl max-w-xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="bg-gradient-to-r from-[#1E74BC] to-[#155a8f] px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-white">Archive material?</h2>
+                                <p className="text-blue-100 text-sm mt-1">Archive this material? It will be removed from active search results.</p>
+                            </div>
+                            <button
+                                title="Close"
+                                onClick={handleCancelArchive}
+                                className="bg-[#1E74BC] hover:bg-red-600 text-white px-3 py-2 rounded-lg transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6">
+                            <p className="text-gray-700">{archiveTargetMaterial.title}</p>
+                        </div>
+
+                        <div className="px-6 py-4 flex items-center justify-end gap-2">
+                            <button
+                                onClick={handleCancelArchive}
+                                className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmArchivePlaceholder}
+                                className="bg-[#1E74BC] text-white px-4 py-2 rounded-lg"
+                            >
+                                Confirm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Total Votes Details Modal */}
+            {showVotesModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="bg-gradient-to-r from-[#1E74BC] to-[#155a8f] px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <MessageSquare size={24} className="text-blue-200" />
+                                    Total Votes Details
+                                </h2>
+                                <p className="text-blue-100 text-sm mt-1">
+                                    {filteredRatings.length} vote{filteredRatings.length !== 1 ? 's' : ''} in the selected period
+                                </p>
+                            </div>
+                            <button
+                                title="Close vote details modal"
+                                onClick={() => setShowVotesModal(false)}
+                                className="bg-[#1E74BC] hover:bg-red-600 text-white px-3 py-2 rounded-lg transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {filteredRatings.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Material / Thesis</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Vote</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Voter</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Comment</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {filteredRatings.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map((vote, index) => (
+                                                <tr key={index} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3 text-sm text-gray-600">{formatVoteDate(vote.created_at)}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-700 max-w-xs break-words">{getVoteSourceName(vote)}</td>
+                                                    <td className="px-4 py-3 text-sm font-semibold">
+                                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${vote.relevant === true ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                            {getVoteTypeLabel(vote)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-gray-600">
+                                                        {vote.user?.username || vote.username || vote.user?.full_name || '—'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-gray-700 max-w-xs break-words">
+                                                        {getVoteComment(vote)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <MessageSquare size={48} className="text-gray-300 mb-3" />
+                                    <p className="text-gray-500 font-semibold">No votes available for the selected filter</p>
                                 </div>
                             )}
                         </div>
