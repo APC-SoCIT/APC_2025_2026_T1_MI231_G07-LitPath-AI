@@ -161,6 +161,12 @@ const AdminDashboard = () => {
     const [activityBucketMaterials, setActivityBucketMaterials] = useState([]);
     const [activityBucketLoading, setActivityBucketLoading] = useState(false);
 
+    // ---------- Citation Activity ----------
+    const [showCitationDetailModal, setShowCitationDetailModal] = useState(false);
+    const [selectedCitationBucket, setSelectedCitationBucket] = useState(null);
+    const [citationBucketMaterials, setCitationBucketMaterials] = useState([]);
+    const [citationBucketLoading, setCitationBucketLoading] = useState(false);
+
     // ---------- Material Ratings Date Filter ----------
     const ratingsDateFilterOptions = ['All', 'Year', 'Month', 'Last 7 days', 'Custom range'];
     const [ratingsDateFilterType, setRatingsDateFilterType] = useState('All');
@@ -366,6 +372,37 @@ const AdminDashboard = () => {
         }
         if (overviewDateFilterType === 'Custom range') {
             return { from: item.bucketStart, to: item.bucketEnd };
+        }
+        return { from: null, to: null };
+    };
+
+    const getCitationPointDateRange = (item) => {
+        const formatDateLocal = (date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        if (overviewDateFilterType === 'Year') {
+            const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+            let monthIndex = monthNames.findIndex(m => m.toLowerCase() === String(item.month).toLowerCase());
+            if (monthIndex === -1) {
+                monthIndex = monthNames.findIndex(m => m.slice(0, 3).toLowerCase() === String(item.month).slice(0, 3).toLowerCase());
+            }
+            if (monthIndex === -1) return { from: null, to: null };
+            const start = new Date(item.year, monthIndex, 1);
+            const end = new Date(item.year, monthIndex + 1, 0);
+            return { from: formatDateLocal(start), to: formatDateLocal(end) };
+        }
+        if (overviewDateFilterType === 'Month') {
+            return { from: item.week_start, to: item.week_end };
+        }
+        if (overviewDateFilterType === 'Last 7 days') {
+            return { from: item.day, to: item.day };
+        }
+        if (overviewDateFilterType === 'Custom range') {
+            return { from: item.day || null, to: item.day || null };
         }
         return { from: null, to: null };
     };
@@ -2862,6 +2899,40 @@ const AdminDashboard = () => {
         setActivityBucketMaterials([]);
     };
 
+    const handleOpenCitationDetailModal = async (item) => {
+        const { from, to } = getCitationPointDateRange(item);
+        if (!from || !to) {
+            showToast('Date details unavailable for this period', 'error');
+            return;
+        }
+        setSelectedCitationBucket(item);
+        setCitationBucketLoading(true);
+        setShowCitationDetailModal(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/dashboard/citation-stats/?from=${from}&to=${to}`, {
+                headers: apiHeaders(true)
+            });
+            if (!res.ok) {
+                console.error('Failed to fetch citation details');
+                showToast('Failed to load citation details for this period', 'error');
+                return;
+            }
+            const data = await res.json();
+            setCitationBucketMaterials(data.top_cited || []);
+        } catch (err) {
+            console.error('Error fetching citation details', err);
+            showToast('Failed to load citation details for this period', 'error');
+        } finally {
+            setCitationBucketLoading(false);
+        }
+    };
+
+    const handleCloseCitationDetailModal = () => {
+        setShowCitationDetailModal(false);
+        setSelectedCitationBucket(null);
+        setCitationBucketMaterials([]);
+    };
+
     const handleRequestArchive = (material) => {
         setArchiveTargetMaterial(material);
         setShowArchiveConfirmModal(true);
@@ -4791,7 +4862,11 @@ const AdminDashboard = () => {
 
                                                                             return (
                                                                                 /* hover:z-50 brings the hovered point to the very front */
-                                                                                <div key={`hover-${i}`} className="flex-1 relative group cursor-default h-full flex justify-center hover:z-50">
+                                                                                <div
+                                                                                    key={`hover-${i}`}
+                                                                                    onClick={() => handleOpenCitationDetailModal(p)}
+                                                                                    className="flex-1 relative group cursor-pointer h-full flex justify-center hover:z-50"
+                                                                                >
                                                                                     
                                                                                     {/* Ghost Hover Highlight Area */}
                                                                                     <div className="absolute inset-y-0 w-[80%] max-w-[32px] z-0 bg-red-500/0 group-hover:bg-red-500/10 transition-colors rounded-sm"></div>
@@ -6985,6 +7060,66 @@ const AdminDashboard = () => {
                                 <div className="flex flex-col items-center justify-center py-12">
                                     <Calendar size={48} className="text-gray-300 mb-3" />
                                     <p className="text-gray-500 font-semibold">No materials viewed in this period</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Citation Detail Modal */}
+            {showCitationDetailModal && selectedCitationBucket && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="bg-gradient-to-r from-[#1E74BC] to-[#155a8f] px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <Copy size={22} className="text-blue-200" />
+                                    {selectedCitationBucket.tooltipRange || `${selectedCitationBucket.month} ${selectedCitationBucket.year}`}
+                                </h2>
+                                <p className="text-blue-100 text-sm mt-1">
+                                    {selectedCitationBucket.copies} total citation cop{selectedCitationBucket.copies !== 1 ? 'ies' : 'y'} in this period
+                                </p>
+                            </div>
+                            <button
+                                title="Close citation detail modal"
+                                onClick={handleCloseCitationDetailModal}
+                                className="bg-[#1E74BC] hover:bg-red-600 text-white px-3 py-2 rounded-lg transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {citationBucketLoading ? (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <p className="text-gray-500 text-sm">Loading...</p>
+                                </div>
+                            ) : citationBucketMaterials.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Title</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Author</th>
+                                                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Citations</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {citationBucketMaterials.map((item, index) => (
+                                                <tr key={`${item.document__title}-${index}`} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3 text-sm text-gray-700 break-words">{item.document__title || item.document__file || 'Untitled'}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-700">{item.document__author || 'Unknown Author'}</td>
+                                                    <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">{item.copies}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <Copy size={48} className="text-gray-300 mb-3" />
+                                    <p className="text-gray-500 font-semibold">No citations recorded in this period</p>
                                 </div>
                             )}
                         </div>
