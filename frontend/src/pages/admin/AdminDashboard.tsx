@@ -4193,35 +4193,58 @@ const AdminDashboard = () => {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="space-y-3">
-                                                {dashboardData.usageByCategory.length > 0 ? (
-                                                    dashboardData.usageByCategory.map((cat, i) => {
-                                                        // Determine icon
-                                                        const Icon = cat.category.includes('Student') ? GraduationCap : 
-                                                                    cat.category.includes('DOST') ? Briefcase : 
-                                                                    cat.category.includes('Librarian') ? BookOpen : Users;
-                                                        return (
-                                                            <div key={i} className="flex flex-col gap-1">
-                                                                <div className="flex justify-between items-center text-xs">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Icon size={12} className="text-gray-500" />
-                                                                        <span className="font-medium text-gray-700">{cat.category}</span>
+
+                                            {dashboardData.usageByCategory.length > 0 ? (() => {
+                                                const totalUsers = dashboardData.usageByCategory.reduce((sum, c) => sum + (c.views || 0), 0);
+                                                const topCategory = [...dashboardData.usageByCategory].sort((a, b) => (b.views || 0) - (a.views || 0))[0];
+                                                const zeroCategories = dashboardData.usageByCategory.filter(c => (c.views || 0) === 0);
+
+                                                return (
+                                                    <>
+                                                        <div className="bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2 mb-4">
+                                                            <p className="text-xs text-indigo-900">
+                                                                <span className="font-bold">{totalUsers}</span> total users
+                                                                {topCategory && topCategory.views > 0 && (
+                                                                    <> — mostly <span className="font-semibold">{topCategory.category}</span> ({topCategory.views})</>
+                                                                )}
+                                                                {zeroCategories.length > 0 && (
+                                                                    <> · {zeroCategories.length} categor{zeroCategories.length === 1 ? 'y' : 'ies'} with no users yet</>
+                                                                )}
+                                                            </p>
+                                                        </div>
+
+                                                        <div className="space-y-3">
+                                                            {dashboardData.usageByCategory.map((cat, i) => {
+                                                                const Icon = cat.category.includes('Student') ? GraduationCap :
+                                                                            cat.category.includes('DOST') ? Briefcase :
+                                                                            cat.category.includes('Librarian') ? BookOpen : Users;
+                                                                return (
+                                                                    <div key={i} className="flex flex-col gap-1">
+                                                                        <div className="flex justify-between items-center text-xs">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <Icon size={12} className="text-gray-500" />
+                                                                                <span className="font-medium text-gray-700">{cat.category}</span>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-1.5">
+                                                                                <span className="font-semibold text-gray-900">{cat.views || 0}</span>
+                                                                                <span className="text-[10px] text-gray-400">({cat.percentage}%)</span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                                            <div
+                                                                                className="h-full bg-indigo-500 rounded-full"
+                                                                                style={{ width: `${cat.percentage}%` }}
+                                                                            />
+                                                                        </div>
                                                                     </div>
-                                                                    <span className="font-semibold text-gray-900">{cat.percentage}%</span>
-                                                                </div>
-                                                                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                                                                    <div 
-                                                                        className="h-full bg-indigo-500 rounded-full"
-                                                                        style={{ width: `${cat.percentage}%` }}
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })
-                                                ) : (
-                                                    <p className="text-xs text-gray-400 italic">No user data.</p>
-                                                )}
-                                            </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </>
+                                                );
+                                            })() : (
+                                                <p className="text-xs text-gray-400 italic">No user data.</p>
+                                            )}
                                         </div>
 
                                         {/* Gender Distribution */}
