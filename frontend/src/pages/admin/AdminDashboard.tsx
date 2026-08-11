@@ -140,9 +140,15 @@ const AdminDashboard = () => {
     const [selectedTopicViewCount, setSelectedTopicViewCount] = useState(0);
     const [topicMaterials, setTopicMaterials] = useState([]);
 
+    // ---------- Most Viewed Theses ----------
     const [showAllThesesModal, setShowAllThesesModal] = useState(false);
     const [allTheses, setAllTheses] = useState([]);
     const [allThesesLoading, setAllThesesLoading] = useState(false);
+
+    // ---------- Gender Distribution ----------
+    const [showGenderDetailModal, setShowGenderDetailModal] = useState(false);
+    const [selectedGenderItem, setSelectedGenderItem] = useState(null);
+    const [hoveredGenderSegment, setHoveredGenderSegment] = useState(null);
 
     // ---------- Material Ratings Date Filter ----------
     const ratingsDateFilterOptions = ['All', 'Year', 'Month', 'Last 7 days', 'Custom range'];
@@ -2732,6 +2738,16 @@ const AdminDashboard = () => {
         setAllTheses([]);
     };
 
+    const handleOpenGenderDetailModal = (genderItem) => {
+        setSelectedGenderItem(genderItem);
+        setShowGenderDetailModal(true);
+    };
+
+    const handleCloseGenderDetailModal = () => {
+        setShowGenderDetailModal(false);
+        setSelectedGenderItem(null);
+    };
+
     const handleRequestArchive = (material) => {
         setArchiveTargetMaterial(material);
         setShowArchiveConfirmModal(true);
@@ -4128,7 +4144,7 @@ const AdminDashboard = () => {
                                             </div>
                                             <button
                                                 onClick={handleOpenAllThesesModal}
-                                                className="text-[10px] font-semibold text-[#1E74BC] hover:text-[#155a8f] hover:underline transition-colors"
+                                                className="text-[14px] font-semibold text-[#1E74BC] hover:text-[#155a8f] hover:underline transition-colors"
                                             >
                                                 View all
                                             </button>
@@ -4155,7 +4171,7 @@ const AdminDashboard = () => {
                                                         title={item.title}>
                                                             {item.title}
                                                         </p>
-                                                        <p className="text-[10px] text-gray-500 truncate mt-0.5">{item.author || 'Unknown Author'}</p>
+                                                        <p className="text-[11px] text-gray-500 truncate mt-2">{item.author || 'Unknown Author'}</p>
                                                     </div>
 
                                                     {/* Views */}
@@ -4213,7 +4229,7 @@ const AdminDashboard = () => {
                                                             </p>
                                                         </div>
 
-                                                        <div className="space-y-3">
+                                                        <div className="space-y-5">
                                                             {dashboardData.usageByCategory.map((cat, i) => {
                                                                 const Icon = cat.category.includes('Student') ? GraduationCap :
                                                                             cat.category.includes('DOST') ? Briefcase :
@@ -4249,76 +4265,120 @@ const AdminDashboard = () => {
 
                                         {/* Gender Distribution */}
                                         <div ref={genderDistributionChartRef} className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 flex-1">
-                                            <div className="flex items-center gap-1 mb-3">
-                                                <h3 className="font-bold text-gray-700 text-xs uppercase tracking-wide flex items-center gap-2">
-                                                    <Users size={16} className="text-purple-600" /> Gender Distribution
-                                                </h3>
-                                                <div className="relative group">
-                                                    <Info size={14} className="text-gray-400 cursor-help hover:text-gray-600" />
-                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none w-56">
-                                                        <div className="bg-gray-800 text-white text-[10px] px-3 py-2 rounded shadow-lg text-center">
-                                                            Gender breakdown of users who registered and submitted feedback.
+                                            <div className="mb-3">
+                                                <div className="flex items-center gap-1">
+                                                    <h3 className="font-bold text-gray-700 text-xs uppercase tracking-wide flex items-center gap-2">
+                                                        <Users size={16} className="text-purple-600" /> Gender Distribution
+                                                    </h3>
+                                                    <div className="relative group">
+                                                        <Info size={14} className="text-gray-400 cursor-help hover:text-gray-600" />
+                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none w-56">
+                                                            <div className="bg-gray-800 text-white text-[10px] px-3 py-2 rounded shadow-lg text-center">
+                                                                Gender breakdown of users who registered and submitted feedback.
+                                                            </div>
+                                                            <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-gray-800"></div>
                                                         </div>
-                                                        <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-gray-800"></div>
                                                     </div>
                                                 </div>
+                                                <p className="text-[10px] italic text-gray-400 mt-0.5">Click a segment to view details</p>
                                             </div>
                                             {(() => {
-                                                // Filter to only genders with data, sort by count descending
                                                 const gendersWithData = dashboardData.genderDistribution
                                                     .filter(g => g.count > 0)
                                                     .sort((a, b) => b.count - a.count);
                                                 const total = dashboardData.genderDistribution.reduce((sum, g) => sum + g.count, 0);
 
-                                                const colorPalette = [
-                                                    '#3b82f6', '#ef4444', '#f97316'
-                                                ];
+                                                const colorPalette = ['#3b82f6', '#ef4444', '#f97316'];
 
                                                 if (gendersWithData.length === 0) {
                                                     return <p className="text-xs text-gray-400 italic">No records yet</p>;
                                                 }
 
+                                                // Build segments with start/end angles (0-360) for both gradient and SVG hit areas
                                                 let cumulativePercent = 0;
-                                                const gradientStops = gendersWithData.map((item, i) => {
+                                                const segments = gendersWithData.map((item, i) => {
                                                     const percentage = (item.count / total) * 100;
-                                                    const start = cumulativePercent;
+                                                    const startPercent = cumulativePercent;
                                                     cumulativePercent += percentage;
-                                                    const color = colorPalette[i % colorPalette.length];
-                                                    return `${color} ${start}% ${cumulativePercent}%`;
-                                                }).join(', ');
+                                                    const endPercent = cumulativePercent;
+                                                    return {
+                                                        ...item,
+                                                        color: colorPalette[i % colorPalette.length],
+                                                        startPercent,
+                                                        endPercent,
+                                                        startAngle: startPercent * 3.6,
+                                                        endAngle: endPercent * 3.6
+                                                    };
+                                                });
+
+                                                const gradientStops = segments.map(s => `${s.color} ${s.startPercent}% ${s.endPercent}%`).join(', ');
+
+                                                // Convert angle (0-360, starting at top, clockwise) to SVG path sector
+                                                const getSectorPath = (startAngle, endAngle, outerRadius = 16, innerRadius = 0) => {
+                                                    const toRad = (deg) => (deg - 90) * (Math.PI / 180);
+                                                    const startRad = toRad(startAngle);
+                                                    const endRad = toRad(endAngle);
+                                                    const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+                                                    const x1 = 16 + outerRadius * Math.cos(startRad);
+                                                    const y1 = 16 + outerRadius * Math.sin(startRad);
+                                                    const x2 = 16 + outerRadius * Math.cos(endRad);
+                                                    const y2 = 16 + outerRadius * Math.sin(endRad);
+                                                    return `M 16 16 L ${x1} ${y1} A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+                                                };
 
                                                 return (
-                                                    <div className="flex flex-col items-center gap-4 w-full">
-                                                        {/* Donut chart */}
+                                                    <div className="flex flex-col items-center gap-5 w-full justify-center h-full">
+                                                        {/* Donut chart with clickable overlay */}
                                                         <div className="relative w-32 h-32 flex-shrink-0">
                                                             <div
-                                                                className="w-full h-full rounded-full"
+                                                                className="w-full h-full rounded-full transition-all"
                                                                 style={{
                                                                     background: `conic-gradient(${gradientStops})`,
                                                                     mask: 'radial-gradient(circle at 50% 50%, transparent 50%, black 51%)',
-                                                                    WebkitMask: 'radial-gradient(circle at 50% 50%, transparent 50%, black 51%)'
+                                                                    WebkitMask: 'radial-gradient(circle at 50% 50%, transparent 50%, black 51%)',
+                                                                    filter: hoveredGenderSegment !== null ? 'brightness(1.05)' : 'none'
                                                                 }}
                                                             />
-                                                            <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-700">
+                                                            <svg viewBox="0 0 32 32" className="absolute inset-0 w-full h-full">
+                                                                {segments.map((seg, i) => (
+                                                                    <path
+                                                                        key={i}
+                                                                        d={getSectorPath(seg.startAngle, seg.endAngle)}
+                                                                        fill="transparent"
+                                                                        stroke="transparent"
+                                                                        pointerEvents="all"
+                                                                        onMouseEnter={() => setHoveredGenderSegment(i)}
+                                                                        onMouseLeave={() => setHoveredGenderSegment(null)}
+                                                                        onClick={() => handleOpenGenderDetailModal(seg)}
+                                                                        style={{ cursor: 'pointer' }}
+                                                                    />
+                                                                ))}
+                                                            </svg>
+                                                            <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-700 pointer-events-none">
                                                                 {total} total
                                                             </div>
                                                         </div>
                                                         {/* Legend */}
-                                                        <div className="w-full space-y-1 max-h-40 overflow-y-auto pr-1">
-                                                            {gendersWithData.map((item, i) => {
-                                                                const color = colorPalette[i % colorPalette.length];
-                                                                return (
-                                                                    <div key={i} className="flex items-center gap-2 text-[10px]">
-                                                                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
-                                                                        <span className="flex-1 truncate" title={item.gender}>
-                                                                            {item.gender}
-                                                                        </span>
-                                                                        <span className="font-semibold text-gray-700">
-                                                                            {item.count} ({item.percentage}%)
-                                                                        </span>
-                                                                    </div>
-                                                                );
-                                                            })}
+                                                        <div className="w-full space-y-2 max-h-40 overflow-y-auto pr-1">
+                                                            {segments.map((item, i) => (
+                                                                <div
+                                                                    key={i}
+                                                                    onClick={() => handleOpenGenderDetailModal(item)}
+                                                                    onMouseEnter={() => setHoveredGenderSegment(i)}
+                                                                    onMouseLeave={() => setHoveredGenderSegment(null)}
+                                                                    className={`flex items-center gap-2 text-xs cursor-pointer rounded px-2 py-1.5 -mx-1 transition-colors ${
+                                                                        hoveredGenderSegment === i ? 'bg-purple-50 font-semibold' : ''
+                                                                    }`}
+                                                                >
+                                                                    <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                                                                    <span className="flex-1 truncate" title={item.gender}>
+                                                                        {item.gender}
+                                                                    </span>
+                                                                    <span className="font-semibold text-gray-700">
+                                                                        {item.count} ({item.percentage}%)
+                                                                    </span>
+                                                                </div>
+                                                            ))}
                                                         </div>
                                                     </div>
                                                 );
@@ -6650,6 +6710,37 @@ const AdminDashboard = () => {
                                     <p className="text-gray-500 font-semibold">No viewed theses found</p>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Gender Detail Modal */}
+            {showGenderDetailModal && selectedGenderItem && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-2xl max-w-md w-full overflow-hidden flex flex-col">
+                        <div className="bg-gradient-to-r from-[#1E74BC] to-[#155a8f] px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <Users size={22} className="text-blue-200" />
+                                    {selectedGenderItem.gender} Respondents
+                                </h2>
+                                <p className="text-blue-100 text-sm mt-1">
+                                    {selectedGenderItem.count} of {dashboardData.genderDistribution.reduce((sum, g) => sum + g.count, 0)} total respondents ({selectedGenderItem.percentage}%)
+                                </p>
+                            </div>
+                            <button
+                                title="Close gender detail modal"
+                                onClick={handleCloseGenderDetailModal}
+                                className="bg-[#1E74BC] hover:bg-red-600 text-white px-3 py-2 rounded-lg transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <p className="text-sm text-gray-600 leading-relaxed">
+                                This reflects self-reported gender from feedback submissions and user account registrations in the selected period. With a small total sample size, percentages can shift significantly with just a few new respondents — consider this alongside <span className="font-semibold">Users by Category</span> for fuller context.
+                            </p>
                         </div>
                     </div>
                 </div>
