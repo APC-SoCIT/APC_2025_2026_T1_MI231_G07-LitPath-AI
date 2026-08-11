@@ -134,6 +134,16 @@ const AdminDashboard = () => {
     // ---------- Dormant Materials Count ----------
     const [dormantCount, setDormantCount] = useState(0);
 
+    // ---------- Top Rated Modal ----------
+    const [showTopicMaterialsModal, setShowTopicMaterialsModal] = useState(false);
+    const [selectedTopicName, setSelectedTopicName] = useState('');
+    const [selectedTopicViewCount, setSelectedTopicViewCount] = useState(0);
+    const [topicMaterials, setTopicMaterials] = useState([]);
+
+    const [showAllThesesModal, setShowAllThesesModal] = useState(false);
+    const [allTheses, setAllTheses] = useState([]);
+    const [allThesesLoading, setAllThesesLoading] = useState(false);
+
     // ---------- Material Ratings Date Filter ----------
     const ratingsDateFilterOptions = ['All', 'Year', 'Month', 'Last 7 days', 'Custom range'];
     const [ratingsDateFilterType, setRatingsDateFilterType] = useState('All');
@@ -2655,6 +2665,73 @@ const AdminDashboard = () => {
         setShowTopRatedModal(true);
     };
 
+    const handleOpenTopicMaterialsModal = async (topicItem) => {
+        // topicItem: { subject, current_views, prev_views, growth }
+        const { from, to } = getDateRange();
+        if (overviewDateFilterType === 'Custom range' && (!from || !to)) return;
+        try {
+            const limit = Math.max(dashboardData.kpi?.totalDocuments || 500, 500);
+            const res = await fetch(`${API_BASE_URL}/dashboard/top-theses/?from=${from}&to=${to}&limit=${limit}`, {
+                headers: apiHeaders(true)
+            });
+            if (!res.ok) {
+                console.error('Failed to fetch materials for topic modal');
+                showToast('Failed to load materials for this topic', 'error');
+                return;
+            }
+            const data = await res.json();
+            const mats = (data.materials || []).filter(m => {
+                if (!m.subjects || !Array.isArray(m.subjects)) return false;
+                return m.subjects.map(s => (s || '').toLowerCase().trim()).includes((topicItem.subject || '').toLowerCase().trim());
+            });
+            mats.sort((a, b) => (b.view_count || 0) - (a.view_count || 0));
+            setSelectedTopicName(topicItem.subject || 'Topic');
+            setSelectedTopicViewCount(topicItem.current_views || 0);
+            setTopicMaterials(mats);
+            setShowTopicMaterialsModal(true);
+        } catch (err) {
+            console.error('Error fetching topic materials', err);
+            showToast('Failed to load materials for this topic', 'error');
+        }
+    };
+
+    const handleCloseTopicMaterialsModal = () => {
+        setShowTopicMaterialsModal(false);
+        setSelectedTopicName('');
+        setTopicMaterials([]);
+        setSelectedTopicViewCount(0);
+    };
+
+    const handleOpenAllThesesModal = async () => {
+        const { from, to } = getDateRange();
+        if (overviewDateFilterType === 'Custom range' && (!from || !to)) return;
+        setAllThesesLoading(true);
+        setShowAllThesesModal(true);
+        try {
+            const limit = Math.max(dashboardData.kpi?.totalDocuments || 500, 500);
+            const res = await fetch(`${API_BASE_URL}/dashboard/top-theses/?from=${from}&to=${to}&limit=${limit}`, {
+                headers: apiHeaders(true)
+            });
+            if (!res.ok) {
+                console.error('Failed to fetch full theses list');
+                showToast('Failed to load full theses list', 'error');
+                return;
+            }
+            const data = await res.json();
+            setAllTheses(data.materials || []);
+        } catch (err) {
+            console.error('Error fetching all theses', err);
+            showToast('Failed to load full theses list', 'error');
+        } finally {
+            setAllThesesLoading(false);
+        }
+    };
+
+    const handleCloseAllThesesModal = () => {
+        setShowAllThesesModal(false);
+        setAllTheses([]);
+    };
+
     const handleRequestArchive = (material) => {
         setArchiveTargetMaterial(material);
         setShowArchiveConfirmModal(true);
@@ -3959,7 +4036,19 @@ const AdminDashboard = () => {
                                                         const maxViews = Math.max(...dashboardData.trendingTopics.map(t => t.current_views), 1);
                                                         const barWidth = (item.current_views / maxViews) * 100;
                                                         return (
-                                                            <div key={i} className="flex flex-col gap-1">
+                                                            <div
+                                                                key={i}
+                                                                role="button"
+                                                                tabIndex={0}
+                                                                onClick={() => handleOpenTopicMaterialsModal(item)}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter' || e.key === ' ') {
+                                                                        e.preventDefault();
+                                                                        handleOpenTopicMaterialsModal(item);
+                                                                    }
+                                                                }}
+                                                                className="flex flex-col gap-1 cursor-pointer group/topic rounded-md px-1 py-0.5 -mx-1 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-[#1E74BC] focus:ring-offset-1 transition-colors"
+                                                            >
                                                                 <div className="flex justify-between items-center text-xs">
                                                                     <span className="font-medium text-gray-700 truncate max-w-[60%]" title={item.subject}>
                                                                         {i+1}. {item.subject}
@@ -3977,6 +4066,9 @@ const AdminDashboard = () => {
                                                                         style={{ width: `${barWidth}%` }}
                                                                     />
                                                                 </div>
+                                                                <span className="text-[10px] text-[#1E74BC] font-semibold opacity-0 group-hover/topic:opacity-100 transition-opacity">
+                                                                    Click to view materials
+                                                                </span>
                                                             </div>
                                                         );
                                                     })
@@ -4019,19 +4111,27 @@ const AdminDashboard = () => {
 
                                     {/* COL 2: MOST VIEWED THESES - LEADERBOARD STYLE (50%) */}
                                     <div className="col-span-12 lg:col-span-6 bg-white rounded-lg shadow-sm border border-gray-100 p-4 flex flex-col overflow-visible">
-                                        <div className="flex items-center gap-1 mb-4">
-                                            <h3 className="font-bold text-gray-700 text-xs uppercase tracking-wide flex items-center gap-2">
-                                                <BookOpen size={16} className="text-purple-600" /> Most Viewed Theses
-                                            </h3>
-                                            <div className="relative group">
-                                                <Info size={14} className="text-gray-400 cursor-help hover:text-gray-600" />
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none w-56">
-                                                    <div className="bg-gray-800 text-white text-[10px] px-3 py-2 rounded shadow-lg text-center">
-                                                        Ranked by number of views within the selected date range.
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center gap-1">
+                                                <h3 className="font-bold text-gray-700 text-xs uppercase tracking-wide flex items-center gap-2">
+                                                    <BookOpen size={16} className="text-purple-600" /> Most Viewed Theses
+                                                </h3>
+                                                <div className="relative group">
+                                                    <Info size={14} className="text-gray-400 cursor-help hover:text-gray-600" />
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none w-56">
+                                                        <div className="bg-gray-800 text-white text-[10px] px-3 py-2 rounded shadow-lg text-center">
+                                                            Ranked by number of views within the selected date range.
+                                                        </div>
+                                                        <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-gray-800"></div>
                                                     </div>
-                                                    <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-gray-800"></div>
                                                 </div>
                                             </div>
+                                            <button
+                                                onClick={handleOpenAllThesesModal}
+                                                className="text-[10px] font-semibold text-[#1E74BC] hover:text-[#155a8f] hover:underline transition-colors"
+                                            >
+                                                View all
+                                            </button>
                                         </div>
                                         <div className="flex-1 flex flex-col gap-2 overflow-hidden">
                                             {dashboardData.topTheses.slice(0, 8).map((item, i) => (
@@ -6406,6 +6506,125 @@ const AdminDashboard = () => {
                                 <div className="flex flex-col items-center justify-center py-12">
                                     <ThumbsUp size={48} className="text-gray-300 mb-3" />
                                     <p className="text-gray-500 font-semibold">No materials with votes found</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Topic Materials Modal */}
+            {showTopicMaterialsModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="bg-gradient-to-r from-[#1E74BC] to-[#155a8f] px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <BookOpen size={22} className="text-blue-200" />
+                                    {selectedTopicName}
+                                </h2>
+                                <p className="text-blue-100 text-sm mt-1">
+                                    {selectedTopicViewCount} views across theses tagged with this subject
+                                </p>
+                            </div>
+                            <button
+                                title="Close topic materials modal"
+                                onClick={handleCloseTopicMaterialsModal}
+                                className="bg-[#1E74BC] hover:bg-red-600 text-white px-3 py-2 rounded-lg transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {topicMaterials && topicMaterials.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Title</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Author</th>
+                                                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">View Count</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {topicMaterials.map((item, index) => (
+                                                <tr key={`${item.title}-${index}`} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3 text-sm text-gray-700 break-words">{item.title || 'Untitled'}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-700">{item.author || '—'}</td>
+                                                    <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">{item.view_count || 0}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <BookOpen size={48} className="text-gray-300 mb-3" />
+                                    <p className="text-gray-500 font-semibold">No materials found for this topic</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* NOTE: query-level search linkage for topics not available without backend changes — deferred, see backlog. */}
+
+            {/* All Theses (Most Viewed) Modal */}
+            {showAllThesesModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="bg-gradient-to-r from-[#1E74BC] to-[#155a8f] px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <BookOpen size={22} className="text-blue-200" />
+                                    Most Viewed Theses
+                                </h2>
+                                <p className="text-blue-100 text-sm mt-1">
+                                    {allTheses.length} theses with recorded views in the selected period
+                                </p>
+                            </div>
+                            <button
+                                title="Close most viewed theses modal"
+                                onClick={handleCloseAllThesesModal}
+                                className="bg-[#1E74BC] hover:bg-red-600 text-white px-3 py-2 rounded-lg transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {allThesesLoading ? (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <p className="text-gray-500 text-sm">Loading...</p>
+                                </div>
+                            ) : allTheses.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Rank</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Title</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Author</th>
+                                                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Views</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {allTheses.map((item, index) => (
+                                                <tr key={`${item.title}-${index}`} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3 text-sm text-gray-700 font-medium">{index + 1}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-700 break-words">{item.title || 'Untitled'}</td>
+                                                    <td className="px-4 py-3 text-sm text-gray-700">{item.author || 'Unknown Author'}</td>
+                                                    <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">{formatNumber(item.view_count)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <BookOpen size={48} className="text-gray-300 mb-3" />
+                                    <p className="text-gray-500 font-semibold">No viewed theses found</p>
                                 </div>
                             )}
                         </div>
