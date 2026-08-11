@@ -150,6 +150,11 @@ const AdminDashboard = () => {
     const [selectedGenderItem, setSelectedGenderItem] = useState(null);
     const [hoveredGenderSegment, setHoveredGenderSegment] = useState(null);
 
+    // ---------- Top Failed Queries ----------
+    const [showAllFailedQueriesModal, setShowAllFailedQueriesModal] = useState(false);
+    const [allFailedQueries, setAllFailedQueries] = useState([]);
+    const [allFailedQueriesLoading, setAllFailedQueriesLoading] = useState(false);
+
     // ---------- Material Ratings Date Filter ----------
     const ratingsDateFilterOptions = ['All', 'Year', 'Month', 'Last 7 days', 'Custom range'];
     const [ratingsDateFilterType, setRatingsDateFilterType] = useState('All');
@@ -2748,6 +2753,35 @@ const AdminDashboard = () => {
         setSelectedGenderItem(null);
     };
 
+    const handleOpenAllFailedQueriesModal = async () => {
+        const { from, to } = getDateRange();
+        if (overviewDateFilterType === 'Custom range' && (!from || !to)) return;
+        setAllFailedQueriesLoading(true);
+        setShowAllFailedQueriesModal(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/dashboard/failed-queries-details/?from=${from}&to=${to}&limit=500`, {
+                headers: apiHeaders(true)
+            });
+            if (!res.ok) {
+                console.error('Failed to fetch full failed queries list');
+                showToast('Failed to load full failed queries list', 'error');
+                return;
+            }
+            const data = await res.json();
+            setAllFailedQueries(data.failed_queries || []);
+        } catch (err) {
+            console.error('Error fetching all failed queries', err);
+            showToast('Failed to load full failed queries list', 'error');
+        } finally {
+            setAllFailedQueriesLoading(false);
+        }
+    };
+
+    const handleCloseAllFailedQueriesModal = () => {
+        setShowAllFailedQueriesModal(false);
+        setAllFailedQueries([]);
+    };
+
     const handleRequestArchive = (material) => {
         setArchiveTargetMaterial(material);
         setShowArchiveConfirmModal(true);
@@ -4096,19 +4130,27 @@ const AdminDashboard = () => {
 
                                         {/* Top Failed Queries */}
                                         <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 flex-1">
-                                            <div className="flex items-center gap-1 mb-3">
-                                                <h3 className="font-bold text-gray-700 text-xs uppercase tracking-wide flex items-center gap-2">
-                                                    <AlertCircle size={16} className="text-red-600" /> Top Failed Queries
-                                                </h3>
-                                                <div className="relative group">
-                                                    <Info size={14} className="text-gray-400 cursor-help hover:text-gray-600" />
-                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none w-48">
-                                                        <div className="bg-gray-800 text-white text-[10px] px-3 py-2 rounded shadow-lg text-center">
-                                                            Specific keywords/queries that returned zero results.
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className="flex items-center gap-1">
+                                                    <h3 className="font-bold text-gray-700 text-xs uppercase tracking-wide flex items-center gap-2">
+                                                        <AlertCircle size={16} className="text-red-600" /> Top Failed Queries
+                                                    </h3>
+                                                    <div className="relative group">
+                                                        <Info size={14} className="text-gray-400 cursor-help hover:text-gray-600" />
+                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-20 pointer-events-none w-48">
+                                                            <div className="bg-gray-800 text-white text-[10px] px-3 py-2 rounded shadow-lg text-center">
+                                                                Specific keywords/queries that returned zero results.
+                                                            </div>
+                                                            <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-gray-800"></div>
                                                         </div>
-                                                        <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-gray-800"></div>
                                                     </div>
                                                 </div>
+                                                <button
+                                                    onClick={handleOpenAllFailedQueriesModal}
+                                                    className="text-[12px] font-semibold text-[#1E74BC] hover:text-[#155a8f] hover:underline transition-colors"
+                                                >
+                                                    View all
+                                                </button>
                                             </div>
                                             {dashboardData.failedQueries && dashboardData.failedQueries.length > 0 ? (
                                                 <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
@@ -4144,7 +4186,7 @@ const AdminDashboard = () => {
                                             </div>
                                             <button
                                                 onClick={handleOpenAllThesesModal}
-                                                className="text-[14px] font-semibold text-[#1E74BC] hover:text-[#155a8f] hover:underline transition-colors"
+                                                className="text-[12px] font-semibold text-[#1E74BC] hover:text-[#155a8f] hover:underline transition-colors"
                                             >
                                                 View all
                                             </button>
@@ -6741,6 +6783,64 @@ const AdminDashboard = () => {
                             <p className="text-sm text-gray-600 leading-relaxed">
                                 This reflects self-reported gender from feedback submissions and user account registrations in the selected period. With a small total sample size, percentages can shift significantly with just a few new respondents — consider this alongside <span className="font-semibold">Users by Category</span> for fuller context.
                             </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* All Failed Queries Modal */}
+            {showAllFailedQueriesModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="bg-gradient-to-r from-[#1E74BC] to-[#155a8f] px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <AlertCircle size={22} className="text-blue-200" />
+                                    Top Failed Queries
+                                </h2>
+                                <p className="text-blue-100 text-sm mt-1">
+                                    {allFailedQueries.length} unique queries with zero results in the selected period
+                                </p>
+                            </div>
+                            <button
+                                title="Close failed queries modal"
+                                onClick={handleCloseAllFailedQueriesModal}
+                                className="bg-[#1E74BC] hover:bg-red-600 text-white px-3 py-2 rounded-lg transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {allFailedQueriesLoading ? (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <p className="text-gray-500 text-sm">Loading...</p>
+                                </div>
+                            ) : allFailedQueries.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Query</th>
+                                                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Count</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {allFailedQueries.map((item, index) => (
+                                                <tr key={`${item.query}-${index}`} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3 text-sm text-gray-700 break-words">{item.query}</td>
+                                                    <td className="px-4 py-3 text-sm text-right font-semibold text-red-600">{item.count}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <AlertCircle size={48} className="text-gray-300 mb-3" />
+                                    <p className="text-gray-500 font-semibold">No failed queries found</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
